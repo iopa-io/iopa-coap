@@ -1,0 +1,58 @@
+{
+  "name": "iopa-coap",
+  "main": "lib/index.js",
+  "description": "Lightweight Constrained Application Protocol (CoAP) protocol server, based on Internet of Protocols Association (IOPA) open standard",
+  "author": "IOPA",
+  "maintainers": [
+    {
+      "name": "iopa",
+      "email": "build@iopa.io"
+    }
+  ],
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iopa-source/iopa-coap.git"
+  },
+  "dependencies": {
+    "bluebird": "*",
+    "iopa": "*",
+    "iopa-coap-packet": "*",
+    "iopa-server": "*",
+    "iopa-common-middleware": "*",
+    "iopa-common-stream": "*",
+    "lru-cache": "~2.5.0"
+  },
+  "keywords": [
+    "limerun",
+    "iopa",
+    "owin",
+    "middleware",
+    "node-coap",
+    "iopa-coap",
+    "coap",
+    "app",
+    "demo",
+    "mac",
+    "osx",
+    "promise",
+    "framework"
+  ],
+  "licenses": [
+    {
+      "type": "Apache-2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+    }
+  ],
+  "engines": {
+    "node": ">= 0.12.0"
+  },
+  "scripts": {
+    "test": "mocha --reporter spec test"
+  },
+  "devDependencies": {
+    "mocha": "^2.2.5",
+    "mocha-junit-reporter": "^1.6.1",
+    "should": "^7.0.2"
+  }
+}
