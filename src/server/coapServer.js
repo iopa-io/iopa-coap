@@ -77,7 +77,7 @@ CoAPServer.prototype._serverPipelineSetup = function (app) {
       };
          
    app.use(CoAPClientSubscriber);
-  // app.use(iopaMessageConfirmableSend);
+   app.use(iopaMessageConfirmableSend);
    app.use(CoAPServerPublisher);
    app.use(CoAPServerAutoAck); 
    app.use(iopaMessageLogger); 
@@ -106,8 +106,8 @@ CoAPServer.prototype._clientMessageSendPipelineSetup = function (clientMessageAp
   clientMessageApp.properties["server.Capabilities"]["iopa-coap.Support"] = {
      "coap.Version": "RFC 7252"
   };
- // clientMessageApp.use(iopaMessageConfirmableSend);
-   clientMessageApp.use(iopaMessageLogger);
+  clientMessageApp.use(iopaMessageConfirmableSend);
+  clientMessageApp.use(iopaMessageLogger);
   clientMessageApp.use(CoAPServerAutoAck);  
 
 };

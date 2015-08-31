@@ -62,9 +62,7 @@ CoapServerPublisher.prototype.invoke = function CoapServerPublisher_invoke(conte
        var clientId =  clientKey(context);
        var client;
        var resource = context["iopa.Path"];
-           console.log("[CoAPSERVERPUBSUB] SUBSCRIBING " + resource +  " FOR " +  clientId);
-     
-         if (clientId in db_Clients) 
+           if (clientId in db_Clients) 
            {
               client =  db_Clients[clientId];
            } else
@@ -147,7 +145,6 @@ CoapServerPublisher.prototype.publish = function CoapServerPublisher_publish(res
         db_Subscriptions[resource].forEach(function(clientId){
            if (clientId in db_Clients)
              {
-                  console.log("[CoAPSERVERPUBSUB] PUBLISHING " + payload.toString() + " FOR " + clientId + resource);
                   client = db_Clients[clientId];
                   var subscription = client["coap.Subscriptions"][resource];
                   subscription["iopa.Headers"]["Observe"] = new Buffer((subscription["coap.Observe"]++).toString(), 'utf8');

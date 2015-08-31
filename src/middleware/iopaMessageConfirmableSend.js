@@ -66,8 +66,7 @@ IopaMessageConfirmableSend.prototype._write = function IopaMessageConfirmableSen
              var oldChunk = chunk.slice();
              var retry = new RetrySender(context,  nextStream.write.bind(nextStream, oldChunk, encoding));
             
-            console.log("[CONFIRMABLE] Retry sender " + context["iopa.MessageId"] + ":" + context["iopa.Seq"] + " " + retry.id + " created " + oldChunk.toString());
-      }
+       }
 
     nextStream.write(chunk, encoding, callback);
 };
@@ -98,8 +97,6 @@ function RetrySender(context, resend) {
 
 
     context["IopaMessageConfirmableSend.responseListener"] = function(rData) {
-        console.log("[CONFIRMABLE] Retry sender " + that1.id + " RESET");
-    
         context["iopa.Events"].removeListener("response", context["IopaMessageConfirmableSend.responseListener"]);
         that1.reset();
         that1 = null;
@@ -126,8 +123,6 @@ RetrySender.prototype._doTimer = function _retrySender_doTimer(context) {
 
 RetrySender.prototype._retry = function _retrySender_retry(context) {
      this._currentTime = this._currentTime * 2;
-     console.log("[CONFIRMABLE] Retry sender " + this.id + " RESEND");
-    
       try {
             this._resend();
         }

@@ -154,9 +154,8 @@ CoAPClientSubscriber.prototype.subscribe = function CoAPClientSubscriber_subscri
  */
 CoAPClientSubscriber.prototype.bye = function CoAPClientSubscriber_bye(channelContext) {
       channelContext["server.RawStream"].end();
-      channelContext.log.info("[COAP-SESSION-CLIENT] BYE ");    
-  //    channelContext["iopa.Events"].removeListener("disconnect", channelContext["coapSubscriptionClient._DisconnectListener"]);
- //     delete channelContext["coapSubscriptionClient._DisconnectListener"];
+   //    channelContext["iopa.Events"].removeListener("disconnect", channelContext["coapSubscriptionClient._DisconnectListener"]);
+   //     delete channelContext["coapSubscriptionClient._DisconnectListener"];
   
       var session = channelContext["coap.Session"];
       var client =  session["coap.ClientID"]; 

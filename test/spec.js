@@ -15,6 +15,23 @@
  * limitations under the License.
  */
  
+/*
+ * Copyright (c) 2015 Limerun Project Contributors
+ * Portions Copyright (c) 2015 Internet of Protocols Assocation (IOPA)
+  *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+ 
 const iopa = require('iopa')
     , Promise = require('bluebird')
     , util = require('util')
@@ -31,17 +48,26 @@ describe('#CoAP Server()', function() {
   var events = new Events.EventEmitter();
   
   before(function(done){
-     var app = new iopa.App();
-      
-      app.use(function(context, next){
-         context.log.info("CoAP DEMO " + context["iopa.Method"]); 
-         events.emit("data", context);  
-         return next();
-          });
-          
-      var serverOptions = {};
+    
+   var app = new iopa.App();
+
+   app.use(function (context, next) {
+     context.log.info("[TEST] SERVER CoAP DEMO " + context["iopa.Method"] + " " + context["iopa.Path"]);
+     context.response["iopa.Body"].end("Hello World");
+     setTimeout(function () {
+       events.emit("data", context);
+     }, 40);
+     return next();
+
+     });
+           
+        var serverOptions = {
+          "server.LocalPortReuse" : true
+        , "server.IsGlobalClient" : false
+      };
+                           
       server = coap.createServer(serverOptions, app.build());
-      
+
       if (!process.env.PORT)
         process.env.PORT = 5683;
       
@@ -65,69 +91,25 @@ describe('#CoAP Server()', function() {
          done();
        });
    });
+      
+     it('should GET via CoAP', function(done) {  
+        var context = coapClient["server.CreateRequest"]("/projector", "GET");
+        context.send().then(function(response) {
+           response["iopa.Method"].should.equal('2.05');
+           response["iopa.Body"].toString().should.equal('Hello World');
+           done();     
+           });   
+    });
     
-    it('should connect via CoAP', function(done) {
-        coapClient.connect("CLIENTID-1", false).then(function(response){
-           numberConnections ++;
-            response["iopa.Method"].should.equal('CONNACK');
-           events.emit("CLIENT-CONNACK");
+    it('should respond with state via CoAP', function(done) {
+       events.on("data", function(context){
            done();
            });
     });
-    
-    it('should publish / subscribe via CoAP', function(done) {
-         coapClient.subscribe("/projector", function(publet){
-         if (numberConnections == 1)
-         {
-           console.log("/projector RESPONSE " + publet["iopa.Body"].toString());
-           publet["iopa.Body"].toString().should.equal('Hello World');
-           done();
-         }
-           else
-             events.emit("CLIENT-PUB", publet);
-           }).then(function(response){
-              response["iopa.Method"].should.equal('SUBACK');
-              server.publish("/projector", new Buffer("Hello World"));
-           });
-    });
-    
-    it('should disconnect client', function(done) {
-        coapClient.disconnect();
-        done();
-    });
-    
-    it('should restablish connectionion via CoAP', function(done) {
-        events.on("CLIENT-PUB", function(publet){
-           console.log("/projector RESPONSE2 " + publet["iopa.Body"].toString());
-           publet["iopa.Body"].toString().should.equal('Hello World 2');
-           done();
-         });
-         
-       server.connect("coap://127.0.0.1")
-       .then(function (cl) {
-         coapClient = cl;
-         coapClient["server.RemotePort"].should.equal(1883);
-        return  coapClient.connect("CLIENTID-1", false)})
-         .then(function(response){
-          numberConnections ++;
-            response["iopa.Method"].should.equal('CONNACK');
-            events.emit("CLIENT-CONNACK");
-             })
-          .then(function(){
-             return coapClient.subscribe("/projector", function(publet){
-             console.log("/projector RESPONSE " + publet["iopa.Body"].toString());
-             publet["iopa.Body"].toString().should.equal('Hello World 2');
-             })
-           })
-          .then(function(response){
-              response["iopa.Method"].should.equal('SUBACK');
-              server.publish("/projector", new Buffer("Hello World 2"));
-             });
-    });
-    
+
     it('should close', function(done) {
        server.close().then(function(){
-         server.log.info("CoAP DEMO Closed");
+         server.log.info("[TEST] CoAP Closed");
          done();});
     });
     

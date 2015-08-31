@@ -38,10 +38,8 @@ function CoAPServerAutoAck(app) {
  * @param next   IOPA application delegate for the remainder of the pipeline
  */
 CoAPServerAutoAck.prototype.invoke = function CoAPServerAutoAck_invoke(context, next) {
-     console.log("CHECKING " + context["iopa.Seq"]);
     if(context["server.IsLocalOrigin"])
     {
-        console.log("LOCAL ORIGIN " + context["iopa.Seq"]);
          context["iopa.Events"].on("response", this._invokeOnParentResponse.bind(this, context)); 
         return next();
     } 
@@ -53,12 +51,10 @@ CoAPServerAutoAck.prototype.invoke = function CoAPServerAutoAck_invoke(context, 
       
     if (context["coap.Confirmable"])
     {  
-       console.log("[AUTOACK] SERVER SETTING AUTO ACK TIMER " + context["iopa.Seq"]);
        context["coap.Ack"] = true;
        context.response["server.RawStream"] = new iopaStream.OutgoingStreamTransform(this._write.bind(this, context, context.response["server.RawStream"]));  
             context["CoAPAutoAck._acknowledgeTimer"] = setTimeout(function() {
-                console.log("[AUTOACK] SERVER AUTO ACK TRIGGERED " + context["iopa.Seq"]);
-                context["coap.WriteAck"]();
+               context["coap.WriteAck"]();
          
                 // we are no longer in piggyback
                 context.response["coap.Confirmable"] = true;
@@ -67,8 +63,7 @@ CoAPServerAutoAck.prototype.invoke = function CoAPServerAutoAck_invoke(context, 
                 // we need a new messageId for the new reply
                 delete context.response["iopa.MessageId"];
                 }, 1050);
-    } else
-    console.log("[AUTOACK] SERVER NOT CONFIRMABLE " + context["iopa.Method"] + " "  + context["iopa.Seq"]);
+    } 
     
     return next();
 };
@@ -83,7 +78,6 @@ CoAPServerAutoAck.prototype.invoke = function CoAPServerAutoAck_invoke(context, 
 CoAPServerAutoAck.prototype._invokeOnParentResponse = function CoAPServerAutoAck_invokeOnParentResponse(channelContext, context) {
      if (context["coap.Confirmable"])
     {  
-      console.log("[AUTOACK] WRITING ACK " + context["iopa.Method"] + " "  + context["iopa.Seq"]);
      context["coap.WriteAck"]();
          
         // we are no longer in piggyback
@@ -92,10 +86,7 @@ CoAPServerAutoAck.prototype._invokeOnParentResponse = function CoAPServerAutoAck
     
         // we need a new messageId for any further reply
         delete context.response["iopa.MessageId"];
-    } else
-    
-     console.log("[AUTOACK] NOT CONFIRMABLE " + context["iopa.Method"] + " "  + context["iopa.Seq"]);
-   
+    } 
 };
 
 /**
@@ -110,8 +101,7 @@ CoAPServerAutoAck.prototype._invokeOnParentResponse = function CoAPServerAutoAck
 CoAPServerAutoAck.prototype._write = function CoAPServerAutoAck_write(context, nextStream, chunk, encoding, callback) {
     if (context["CoAPAutoAck._acknowledgeTimer"])
     {
-        console.log("[AUTOACK] ACKED " + context["iopa.Method"] + " "  + context["iopa.Seq"]);
-        clearTimeout(context["CoAPAutoAck._acknowledgeTimer"]);
+         clearTimeout(context["CoAPAutoAck._acknowledgeTimer"]);
         context["CoAPAutoAck._acknowledgeTimer"] = null;
     }
  

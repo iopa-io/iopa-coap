@@ -73,9 +73,8 @@ server.listen(process.env.PORT, process.env.IP)
        setTimeout(function() {
                 server.publish("/projector", new Buffer("Hello World 2"));
             }, 1000);
-    })
-  .then(function(response){
-    //   server.log.info("CoAP DEMO Response " + response["iopa.Method"]);
-    //   server.close().then(function(){server.log.info("CoAP DEMO Closed");});
+         setTimeout(function() {
+                server.close().then(function(){server.log.info("CoAP DEMO Closed"); })
+            }, 2000);
     });
     
