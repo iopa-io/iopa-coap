@@ -1,6 +1,6 @@
 # [![IOPA](http://iopa.io/iopa.png)](http://iopa.io)<br> iopa-coap
 
-[![Build Status](https://api.shippable.com/projects/TBD/badge?branchName=master)](https://app.shippable.com/projects/TBD) 
+[![Build Status](https://api.shippable.com/projects/55e4c26e1895ca4474111b91/badge?branchName=master)](https://app.shippable.com/projects/55e4c26e1895ca4474111b91) 
 [![IOPA](https://img.shields.io/badge/iopa-middleware-99cc33.svg?style=flat-square)](http://iopa.io)
 [![limerun](https://img.shields.io/badge/limerun-certified-3399cc.svg?style=flat-square)](https://nodei.co/npm/limerun/)
 
@@ -52,65 +52,73 @@ Includes:
 
 ## Usage
     
-### Simple Hello World Server and Client
+### Simple Hello World Server and Client with Pub/Sub
 ``` js
 const iopa = require('iopa')
-    , coap = require('iopa-coap')      
-
-var app = new iopa.App();
-
-app.use(function(context, next){
-   context.response.end('Hello World from ' + context["iopa.Path"]);
-   return next();
-    });
-
-var server = coap.createServer(serverOptions, app.build());
-
-server.listen(coap.constants.coapPort).then(function(){
-   var context = server.clientCreateRequest('coap://127.0.0.1/device', "CONNECT");
-   context.response.pipe(process.stdout);
-   context["iopa.Events"].on("response", function() {
-   context.response["iopa.Body"].on('end', function() {
-       process.exit(0)
-    });
-  });
-  
-  context.end();
-
- });
-
-``` 
-
-### Multicast and UniCast Server Client Example
-``` js
-const iopa = require('iopa')
-    , coap = require('iopa-coap')      
+    , coap = require('./index.js')      
     , Promise = require('bluebird')
+    , util = require('util');
+
 
 var app = new iopa.App();
+
+
 app.use(function(context, next){
-  context.response["iopa.Body"].end('Hello World from ' + context["iopa.Path"]);
+   context.log.info("[DEMO] SERVER CoAP DEMO " + context["iopa.Method"] + " " + context["iopa.Path"]);
+   
+   if (context["iopa.Method"] === "GET")
+   {
+  
+     setTimeout(function() {
+                server.publish("/projector", new Buffer("Hello World"));
+            }, 2500);
+   }
+
    return next();
     });
     
 var serverOptions = {
-    "server.LocalPortMulticast" : coap.constants.coapMulticastIPV4
-  , "server.LocalPortReuse" : true
+    "server.LocalPortReuse" : true
   , "server.IsGlobalClient" : false
-}
+};
 
+var clientOptions = { "server.IsGlobalClient" : true
+                    , "server.LocalPortReuse" : false};
+                    
 var server = coap.createServer(serverOptions, app.build());
 
-Promise.join( server.listen(process.env.PORT, process.env.IP)).then(function(){
-   server.log.info("Server is on port " + server.port );
-  
-   server.clientCreateRequest('coap://127.0.0.1:' + server.port + '/projector', "GET")
-   .then(function(context) {
-    context.response["iopa.Body"].pipe(process.stdout);
-    context["iopa.Body"].end("CONNECT");
-   });
-});
+if (!process.env.PORT)
+  process.env.PORT = 5683;
+
+var context;
+var coapClient;
+server.listen(process.env.PORT, process.env.IP)
+  .then(function(){
+    server.log.info("[DEMO] Server is on port " + server.port );
+    return server.connect("coap://127.0.0.1");
+  })
+  .then(function(cl){
+    coapClient = cl;
+    server.log.info("[DEMO] Client is on port " + coapClient["server.LocalPort"]);
+    return coapClient.hello("CLIENTID-1", false);
+  })
+  .then(function(){
+       return coapClient.subscribe('/projector', function(context){
+           console.log("[DEMO] CoAP /projector RESPONSE " + context["iopa.Body"].toString());
+           });
+        })
+  .then(function(response){
+       server.log.info("[DEMO] CoAP DEMO Response " + response["iopa.Method"] + " " + response["iopa.Body"].toString());
+       setTimeout(function() {
+                server.publish("/projector", new Buffer("Hello World 2"));
+            }, 1000);
+         setTimeout(function() {
+                server.close().then(function(){server.log.info("CoAP DEMO Closed"); })
+            }, 2000);
+    });
+
 ``` 
+
   
 ## Roadmap
 

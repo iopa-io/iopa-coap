@@ -20,7 +20,7 @@ const util = require('util')
 
 const iopa = require('iopa')
   , Coap = require('iopa-coap-packet')
-  , IopaServer = require('iopa-server').MessageServer;
+  , IopaServer = require('iopa-server');
 
 const  CoAPClientSubscriber = require('../middleware/coapClientSubscriber.js')
    , CoAPServerAutoAck = require('../middleware/coapServerAutoAck.js')
@@ -60,19 +60,27 @@ function CoAPServer(options, appFunc) {
   IopaServer.call(this, options, appFunc);
         
    // INIT COAP SERVER
-  this._coap = Coap.createServer(options, this.serverPipeline, this.clientPipeline);
+  this._coap = Coap.createServer(options, this._serverRequestPipeline, this.clientPipeline);
 }
 
 util.inherits(CoAPServer, IopaServer);
 
 /* ****************************************************** */
+
 /**
- * SERVER PIPELINE SETUP
+ * SERVER CHANNEL PIPELINE SETUP
  * @InheritDoc
  */
-CoAPServer.prototype._serverPipelineSetup = function (app) {
+CoAPServer.prototype._serverChannelPipelineSetup = function (serverApp) {
+};
+
+/**
+ * SERVER MESSAGE PIPELINE SETUP
+ * @InheritDoc
+ */
+CoAPServer.prototype._serverMessagePipelineSetup = function (app) {
    app.properties["server.Capabilities"]["iopa-coap.Version"] = "1.0";
-    app.properties["server.Capabilities"]["iopa-coap.Support"] = {
+   app.properties["server.Capabilities"]["iopa-coap.Support"] = {
        "coap.Version": "RFC 7252"
       };
          
@@ -109,7 +117,6 @@ CoAPServer.prototype._clientMessageSendPipelineSetup = function (clientMessageAp
   clientMessageApp.use(iopaMessageConfirmableSend);
   clientMessageApp.use(iopaMessageLogger);
   clientMessageApp.use(CoAPServerAutoAck);  
-
 };
 
 /* ****************************************************** */
