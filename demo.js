@@ -20,9 +20,7 @@ const iopa = require('iopa')
     , Promise = require('bluebird')
     , util = require('util');
 
-
 var app = new iopa.App();
-
 
 app.use(function(context, next){
    context.log.info("[DEMO] SERVER CoAP DEMO " + context["iopa.Method"] + " " + context["iopa.Path"]);

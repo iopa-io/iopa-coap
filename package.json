@@ -1,6 +1,6 @@
 {
   "name": "iopa-coap",
-  "main": "lib/index.js",
+  "main": "index.js",
   "description": "Lightweight Constrained Application Protocol (CoAP) protocol server, based on Internet of Protocols Association (IOPA) open standard",
   "author": "IOPA",
   "maintainers": [
