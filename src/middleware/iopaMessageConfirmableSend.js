@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2015 Limerun Project Contributors
- * Portions Copyright (c) 2015 Internet of Protocols Assocation (IOPA)
+ * Copyright (c) 2015 Internet of Protocols Alliance (IOPA)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,10 +14,17 @@
  * limitations under the License.
  */
 
+const constants = require('iopa').constants,
+  IOPA = constants.IOPA,
+  SERVER = constants.SERVER,
+  COAP = constants.COAP;
+  
 const Events = require('events');
-const constants = require('../common/constants.js')
+const QOS = require('../common/constants.js').QOS
  , iopaStream = require('iopa-common-stream');
  
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
 /**
  * IOPA Middleware for Auto Retrying Sends until Confirmed (by any "response" event on iopa.Events)
  *
@@ -27,10 +33,10 @@ const constants = require('../common/constants.js')
  * @constructor
  */
 function IopaMessageConfirmableSend(app) {
-    if (!app.properties["server.Capabilities"]["iopa-coap.Version"])
+    if (!app.properties[SERVER.Capabilities]["iopa-coap.Version"])
         throw ("Missing Dependency: CoAP Server/Middleware in Pipeline");
 
-    app.properties["server.Capabilities"]["coapResponseConfirmableSend.Version"] = "1.0";
+    app.properties[SERVER.Capabilities]["coapResponseConfirmableSend.Version"] = "1.0";
 }
 
 /**
@@ -40,12 +46,12 @@ function IopaMessageConfirmableSend(app) {
  */
 IopaMessageConfirmableSend.prototype.invoke = function IopaMessageConfirmableSend_invoke(context, next) { 
     
-  if (context["server.IsLocalOrigin"])
+  if (context[SERVER.IsLocalOrigin])
      // CLIENT REQUEST OUT
-      context["server.RawStream"] = new iopaStream.OutgoingStreamTransform(this._write.bind(this, context, context["server.RawStream"]));  
-  else if (context["server.IsRequest"]) 
+      context[SERVER.RawStream] = new iopaStream.OutgoingStreamTransform(this._write.bind(this, context, context[SERVER.RawStream]));  
+  else if (context[SERVER.IsRequest]) 
     // SERVER REQUEST IN
-     context.response["server.RawStream"] = new iopaStream.OutgoingStreamTransform(this._write.bind(this, context.response, context.response["server.RawStream"])); 
+     context.response[SERVER.RawStream] = new iopaStream.OutgoingStreamTransform(this._write.bind(this, context.response, context.response[SERVER.RawStream])); 
     
    return next();
 };
@@ -61,11 +67,10 @@ IopaMessageConfirmableSend.prototype.invoke = function IopaMessageConfirmableSen
 */
 IopaMessageConfirmableSend.prototype._write = function IopaMessageConfirmableSend_write(context, nextStream, chunk, encoding, callback) {
      
-    if (context["server.ResendOnTimeout"])
+    if (context[SERVER.Retry])
     {
              var oldChunk = chunk.slice();
-             var retry = new RetrySender(context,  nextStream.write.bind(nextStream, oldChunk, encoding));
-            
+             context["coapResponseConfirmableSend._retrySender"] = new RetrySender(context,  nextStream.write.bind(nextStream, oldChunk, encoding));
        }
 
     nextStream.write(chunk, encoding, callback);
@@ -82,42 +87,39 @@ var retryId = 0;
  * @private
  */
 function RetrySender(context, resend) {
-    
-   if (!(this instanceof RetrySender))
-      return new RetrySender(context, resend);
- 
-    
+    _classCallCheck(this, RetrySender);
+        
     this._sendAttempts = 0;
-    this._currentTime = constants.ackTimeout * (1 + (constants.ackRandomFactor - 1) * Math.random()) * 1000;
+    this._currentTime = QOS.ackTimeout * (1 + (QOS.ackRandomFactor - 1) * Math.random()) * 1000;
     this._context = context;
     this._resend = resend;
     this.id = retryId ++;
     
     var that1 = this;
 
-
     context["IopaMessageConfirmableSend.responseListener"] = function(rData) {
-        context["iopa.Events"].removeListener("response", context["IopaMessageConfirmableSend.responseListener"]);
+        context[IOPA.Events].removeListener(IOPA.EVENTS.Response, context["IopaMessageConfirmableSend.responseListener"]);
         that1.reset();
         that1 = null;
     }
     
-    context["iopa.Events"].on("response", context["IopaMessageConfirmableSend.responseListener"]);
+    context[IOPA.Events].on(IOPA.EVENTS.Response, context["IopaMessageConfirmableSend.responseListener"]);
 
     var that2 = this;
     this._maxRetrytimer = setTimeout(function() {
-        var err = new Error('[CONFIRMABLE] No reply in ' + constants.exchangeLifetime + 's');
-        err.retransmitTimeout = constants.exchangeLifetime;
+        context[IOPA.Events].removeListener(IOPA.EVENTS.Response, context["IopaMessageConfirmableSend.responseListener"]);
+        var err = new Error('[CONFIRMABLE] No reply in ' + QOS.exchangeLifetime + 's');
+        err.retransmitTimeout = QOS.exchangeLifetime;
         that2.emit('error', err);
         that2.reset();
         that2 = null;
-    }, constants.exchangeLifetime * 1000);
+    }, QOS.exchangeLifetime * 1000);
 
    this._doTimer.call(this, context);
 }
 
 RetrySender.prototype._doTimer = function _retrySender_doTimer(context) {
-    if (++this._sendAttempts <= constants.maxRetransmit)
+    if (++this._sendAttempts <= QOS.maxRetransmit)
             this._retryTimer = setTimeout(this._retry.bind(this, context), this._currentTime);
 }
 
@@ -127,7 +129,7 @@ RetrySender.prototype._retry = function _retrySender_retry(context) {
             this._resend();
         }
       catch (err) {
-            context["server.Logger"].error("[CONFIRMABLE] Unable to resend packet");
+            context[SERVER.Logger].error("[CONFIRMABLE] Unable to resend packet");
       }
         
      this._doTimer(context);

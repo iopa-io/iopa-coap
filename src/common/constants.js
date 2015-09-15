@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2015 Limerun Project Contributors
- * Portions Copyright (c) 2015 Internet of Protocols Assocation (IOPA)
+ * Copyright (c) 2015 Internet of Protocols Alliance (IOPA)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +15,7 @@
  */
 
 // CoAP parameters
-var p = {
+var QOS = {
     ackTimeout: 2 // seconds
   , ackRandomFactor: 1.5
   , maxRetransmit: 4
@@ -28,40 +27,43 @@ var p = {
   // from the start of its transmission to the completion of its
   // reception.
   , maxLatency: 100 // seconds
+  , maxTransmitSpan: null
+  ,maxTransmitWait: null
+  , processingDelay: null
+  , maxRTT: null 
+  , exchangeLifetime: null
 }
 
 // MAX_TRANSMIT_SPAN is the maximum time from the first transmission
 // of a Confirmable message to its last retransmission.
-p.maxTransmitSpan = p.ackTimeout * ((Math.pow(2, p.maxRetransmit)) - 1) * p.ackRandomFactor
+QOS.maxTransmitSpan = QOS.ackTimeout * ((Math.pow(2, QOS.maxRetransmit)) - 1) * QOS.ackRandomFactor
 
 // MAX_TRANSMIT_WAIT is the maximum time from the first transmission
 // of a Confirmable message to the time when the sender gives up on
 // receiving an acknowledgement or reset.
-p.maxTransmitWait = p.ackTimeout * (Math.pow(2, p.maxRetransmit + 1) - 1) * p.ackRandomFactor
+QOS.maxTransmitWait = QOS.ackTimeout * (Math.pow(2, QOS.maxRetransmit + 1) - 1) * QOS.ackRandomFactor
 
 
 // PROCESSING_DELAY is the time a node takes to turn around a
 // Confirmable message into an acknowledgement.
-p.processingDelay = p.ackTimeout
+QOS.processingDelay = QOS.ackTimeout
 
 // MAX_RTT is the maximum round-trip time
-p.maxRTT = 2 * p.maxLatency + p.processingDelay
+QOS.maxRTT = 2 * QOS.maxLatency + QOS.processingDelay
 
 //  EXCHANGE_LIFETIME is the time from starting to send a Confirmable
 //  message to the time when an acknowledgement is no longer expected,
 //  i.e.  message layer information about the message exchange can be
 //  purged
-p.exchangeLifetime = p.maxTransmitSpan + p.maxRTT
+QOS.exchangeLifetime = QOS.maxTransmitSpan + QOS.maxRTT
 
-// default port for CoAP
-p.coapPort = 5683
+exports.QOS = QOS;
 
-// default max packet size
-p.maxPacketSize = 1280
-
-p.coapMulticastIPV4 = "224.0.1.187"
-p.coapMulticastIPV6 = "FF0X::FD"
-
-module.exports = p
-
-
+exports.COAPSESSION = {
+  ClientId: "coapSession.ClientId",
+  Subscriptions: "coapSession.Subscriptions",
+  Clean: "coapSession.Clean",
+  PendingMessages: "coapSession.PendingMessages",
+  Session: "coapSession.Session",
+  ObservationSeq: "CoapSession.ObservationSeq"
+}

@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2015 Limerun Project Contributors
- * Portions Copyright (c) 2015 Internet of Protocols Assocation (IOPA)
+ * Copyright (c) 2015 Internet of Protocols Alliance (IOPA)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +14,13 @@
  * limitations under the License.
  */
  
- var db_Clients = {};
+ const constants = require('iopa').constants,
+  IOPA = constants.IOPA,
+  SERVER = constants.SERVER,
+  COAP = constants.COAP,
+  SESSION = require('../common/constants.js').COAPSESSION
+  
+  var db_Clients = {};
  var db_Subscriptions = {};
  
 /**
@@ -27,10 +32,10 @@
  * @public
  */
 function CoapServerPublisher(app) {
-    if (!app.properties["server.Capabilities"]["iopa-coap.Version"])
+    if (!app.properties[SERVER.Capabilities]["iopa-coap.Version"])
         throw ("Missing Dependency: CoAP Server/Middleware in Pipeline");
 
-   app.properties["server.Capabilities"]["CoapServerPublisher.Version"] = "1.0";
+   app.properties[SERVER.Capabilities]["CoapServerPublisher.Version"] = "1.0";
    this.app = app;
    this.server = app.server;
    
@@ -46,7 +51,7 @@ function CoapServerPublisher(app) {
  * @private
  */
  function clientKey(context){
-    return context["server.RemoteAddress"] + ":" + context["server.RemotePort"];
+    return context[SERVER.RemoteAddress] + ":" + context[SERVER.RemotePort];
 }
 
 /**
@@ -57,48 +62,54 @@ function CoapServerPublisher(app) {
  */
 CoapServerPublisher.prototype.invoke = function CoapServerPublisher_invoke(context, next) {
      
-     if ((context['iopa.Method'] == 'GET') && ('Observe' in context['iopa.Headers']))
+     if ((context[IOPA.Method] == IOPA.METHODS.GET) && ('Observe' in context[IOPA.Headers]))
      {
        var clientId =  clientKey(context);
        var client;
-       var resource = context["iopa.Path"];
+       var topic = context[IOPA.Path];
            if (clientId in db_Clients) 
            {
               client =  db_Clients[clientId];
            } else
            {
               client = {}
-              client["coap.Subscriptions"] = {};
+              client[SESSION.Subscriptions] = {};
               db_Clients[clientId] = client;
            }
            
-           var subscription =  {
-              "server.RemoteAddress": context["server.RemoteAddress"] 
-            , "server.RemotePort": context["server.RemotePort"]
-            , "iopa.Body": context.response["iopa.Body"]
-            , "iopa.Headers": context.response["iopa.Headers"]
-            , "coap.Observe": 1
-            };
-            
-            client["coap.Subscriptions"][resource] = subscription;
+           var subscription = {};
+           subscription[SERVER.RemoteAddress] = context.response[SERVER.RemoteAddress];
+           subscription[SERVER.RemotePort] = context.response[SERVER.RemotePort];
+           subscription[IOPA.Headers] = context.response[IOPA.Headers];
+           subscription[IOPA.Body] = context.response[IOPA.Body];
+           subscription[SESSION.ObservationSeq] = 1;
+           client[SESSION.Subscriptions][topic] = subscription;
    
          // Add to global subscriptions
-         if (resource in db_Subscriptions){
-             if (db_Subscriptions[resource].indexOf(clientId) > -1)
+         if (topic in db_Subscriptions){
+             if (db_Subscriptions[topic].indexOf(clientId) > -1)
              {
                  // SILENTLY IGNORE ALREADY SUBSCRIBED
              } else
              {
-                 db_Subscriptions[resource].push(clientId);
+                 db_Subscriptions[topic].push(clientId);
              }
              
          } else
          {
-             db_Subscriptions[resource] = [clientId];
+             db_Subscriptions[topic] = [clientId];
          }
-   
-       }
- 
+         
+         return next()
+         .then(function(){
+             return new Promise(function(resolve, reject){
+                 context[IOPA.Events].on(IOPA.EVENTS.Disconnect, resolve);
+                 context[IOPA.Events].on(IOPA.EVENTS.Finish, resolve);
+             });
+             
+         });
+         
+        } else
     return next();
 };
 
@@ -115,11 +126,11 @@ CoapServerPublisher.prototype.unsubsubscribe = function CoapServerPublisher_unsu
     if (clientId in db_Clients)
     {
         db_Clients[clientId].forEach(function(client){
-            client["coap.Subscriptions"].forEach(function(resource){
-                if (resource in db_Subscriptions){
-                   for(var i = db_Subscriptions[resource].length; i--;) {
-                          if(db_Subscriptions[resource][i] === clientId) {
-                              db_Subscriptions[resource].splice(i, 1);
+            client[SESSION.Subscriptions].forEach(function(topic){
+                if (topic in db_Subscriptions){
+                   for(var i = db_Subscriptions[topic].length; i--;) {
+                          if(db_Subscriptions[topic][i] === clientId) {
+                              db_Subscriptions[topic].splice(i, 1);
                           }
                       }    
                  } else
@@ -134,21 +145,20 @@ CoapServerPublisher.prototype.unsubsubscribe = function CoapServerPublisher_unsu
     
 /**
  * @method publish
- * @param string resource   IOPA Path of  CoAP resource
+ * @param string topic   IOPA Path of  CoAP resource
  * @param buffer payload  payload to publish to all subscribed clients
  */
-CoapServerPublisher.prototype.publish = function CoapServerPublisher_publish(resource, payload) {
-    if (resource in db_Subscriptions)
-    {
-        
+CoapServerPublisher.prototype.publish = function CoapServerPublisher_publish(topic, payload) {
+    if (topic in db_Subscriptions)
+    {  
         var client;
-        db_Subscriptions[resource].forEach(function(clientId){
+        db_Subscriptions[topic].forEach(function(clientId){
            if (clientId in db_Clients)
              {
                   client = db_Clients[clientId];
-                  var subscription = client["coap.Subscriptions"][resource];
-                  subscription["iopa.Headers"]["Observe"] = new Buffer((subscription["coap.Observe"]++).toString(), 'utf8');
-                  subscription["iopa.Body"].write(payload);
+                  var subscription = client[SESSION.Subscriptions][topic];
+                  subscription[IOPA.Headers]["Observe"] = new Buffer((subscription[SESSION.ObservationSeq]++).toString(), 'utf8');
+                  subscription[IOPA.Body].write(payload);
              }
              else 
              {

@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2015 Limerun Project Contributors
- * Portions Copyright (c) 2015 Internet of Protocols Assocation (IOPA)
+ * Copyright (c) 2015 Internet of Protocols Alliance (IOPA)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +14,12 @@
  * limitations under the License.
  */
 
-var iopaStream = require('iopa-common-stream');
+const constants = require('iopa').constants,
+  IOPA = constants.IOPA,
+  SERVER = constants.SERVER,
+  COAP = constants.COAP;
+  
+const iopaStream = require('iopa-common-stream');
     
 /**
  * CoAP IOPA Middleware for Auto Acknowledging Server Requests
@@ -26,10 +30,10 @@ var iopaStream = require('iopa-common-stream');
  * @public
  */
 function CoAPServerAutoAck(app) {
-    if (!app.properties["server.Capabilities"]["iopa-coap.Version"])
+    if (!app.properties[SERVER.Capabilities]["iopa-coap.Version"])
         throw ("Missing Dependency: CoAP Server/Middleware in Pipeline");
 
-   app.properties["server.Capabilities"]["CoAPAutoAck.Version"] = "1.0";
+   app.properties[SERVER.Capabilities]["CoAPAutoAck.Version"] = "1.0";
 }
 
 /**
@@ -38,9 +42,9 @@ function CoAPServerAutoAck(app) {
  * @param next   IOPA application delegate for the remainder of the pipeline
  */
 CoAPServerAutoAck.prototype.invoke = function CoAPServerAutoAck_invoke(context, next) {
-    if(context["server.IsLocalOrigin"])
+    if(context[SERVER.IsLocalOrigin])
     {
-         context["iopa.Events"].on("response", this._invokeOnParentResponse.bind(this, context)); 
+         context[IOPA.Events].on(IOPA.EVENTS.Response, this._invokeOnParentResponse.bind(this, context)); 
         return next();
     } 
     
@@ -49,20 +53,20 @@ CoAPServerAutoAck.prototype.invoke = function CoAPServerAutoAck_invoke(context, 
   //  if (context["iopa.METHOD"] > '0.00' && context["iopa.METHOD"] <'1.00')
       // transfer to request for matching
       
-    if (context["coap.Confirmable"])
+    if (context[COAP.Confirmable])
     {  
-       context["coap.Ack"] = true;
-       context.response["server.RawStream"] = new iopaStream.OutgoingStreamTransform(this._write.bind(this, context, context.response["server.RawStream"]));  
+       context[COAP.Ack] = true;
+       context.response[SERVER.RawStream] = new iopaStream.OutgoingStreamTransform(this._write.bind(this, context, context.response["server.RawStream"]));  
             context["CoAPAutoAck._acknowledgeTimer"] = setTimeout(function() {
-               context["coap.WriteAck"]();
+               context[SERVER.WriteAck]();
          
                 // we are no longer in piggyback
-                context.response["coap.Confirmable"] = true;
-                context.response["coap.Ack"] = false;
+                context.response[COAP.Confirmable] = true;
+                context.response[COAP.Ack] = false;
     
                 // we need a new messageId for the new reply
-                delete context.response["iopa.MessageId"];
-                }, 1050);
+                context.response[IOPA.MessageId] = null;
+                }, 50);
     } 
     
     return next();
@@ -76,16 +80,16 @@ CoAPServerAutoAck.prototype.invoke = function CoAPServerAutoAck_invoke(context, 
  * @param next   IOPA application delegate for the remainder of the pipeline
  */
 CoAPServerAutoAck.prototype._invokeOnParentResponse = function CoAPServerAutoAck_invokeOnParentResponse(channelContext, context) {
-     if (context["coap.Confirmable"])
+     if (context[COAP.Confirmable])
     {  
-     context["coap.WriteAck"]();
+     context[SERVER.WriteAck]();
          
         // we are no longer in piggyback
-        context.response["coap.Confirmable"] = true;
-        context.response["coap.Ack"] = false;
+        context.response[COAP.Confirmable] = true;
+        context.response[COAP.Ack] = false;
     
         // we need a new messageId for any further reply
-        delete context.response["iopa.MessageId"];
+        context.response[IOPA.MessageId] = null;
     } 
 };
 

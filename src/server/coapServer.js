@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2015 Limerun Project Contributors
- * Portions Copyright (c) 2015 Internet of Protocols Assocation (IOPA)
+ * Copyright (c) 2015 Internet of Protocols Alliance (IOPA)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +15,7 @@
  */
  
 const util = require('util')
-  , Promise = require('bluebird');
-
+ 
 const iopa = require('iopa')
   , Coap = require('iopa-coap-packet')
   , IopaServer = require('iopa-server');
@@ -28,12 +26,12 @@ const  CoAPClientSubscriber = require('../middleware/coapClientSubscriber.js')
    , iopaMessageConfirmableSend = require('../middleware/iopaMessageConfirmableSend.js') 
   
 const iopaMessageLogger = require('iopa-common-middleware').MessageLogger
-  
-var globalClient = null;
 
 /* *********************************************************
  * IOPA CoAP SERVER / CLIENT WITH MIDDLEWARE CONSTRUCTED
  * ********************************************************* */
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 /**
  * CoAP IOPA Server includes CoAP Client
@@ -44,8 +42,7 @@ var globalClient = null;
  * @constructor
  */
 function CoAPServer(options, appFunc) {
-  if (!(this instanceof CoAPServer))
-    return new CoAPServer(options, appFunc);
+   _classCallCheck(this, CoAPServer);
     
   if (typeof options === 'function') {
     appFunc = options;
@@ -84,11 +81,9 @@ CoAPServer.prototype._serverMessagePipelineSetup = function (app) {
        "coap.Version": "RFC 7252"
       };
          
-   app.use(CoAPClientSubscriber);
-   app.use(iopaMessageConfirmableSend);
+//   app.use(iopaMessageConfirmableSend);
    app.use(CoAPServerPublisher);
-   app.use(CoAPServerAutoAck); 
-   app.use(iopaMessageLogger); 
+//   app.use(CoAPServerAutoAck); 
 };
 
 /**
@@ -114,9 +109,8 @@ CoAPServer.prototype._clientMessageSendPipelineSetup = function (clientMessageAp
   clientMessageApp.properties["server.Capabilities"]["iopa-coap.Support"] = {
      "coap.Version": "RFC 7252"
   };
-  clientMessageApp.use(iopaMessageConfirmableSend);
-  clientMessageApp.use(iopaMessageLogger);
-  clientMessageApp.use(CoAPServerAutoAck);  
+//  clientMessageApp.use(iopaMessageConfirmableSend);
+//  clientMessageApp.use(CoAPServerAutoAck);  
 };
 
 /* ****************************************************** */

@@ -1,19 +1,19 @@
 # [![IOPA](http://iopa.io/iopa.png)](http://iopa.io)<br> iopa-coap
 
-[![Build Status](https://api.shippable.com/projects/55e4c26e1895ca4474111b91/badge?branchName=master)](https://app.shippable.com/projects/55e4c26e1895ca4474111b91) 
+[![Build Status](https://api.shippable.com/projects/TBD/badge?branchName=master)](https://app.shippable.com/projects/TBD) 
 [![IOPA](https://img.shields.io/badge/iopa-middleware-99cc33.svg?style=flat-square)](http://iopa.io)
 [![limerun](https://img.shields.io/badge/limerun-certified-3399cc.svg?style=flat-square)](https://nodei.co/npm/limerun/)
 
 [![NPM](https://nodei.co/npm/iopa-coap.png?downloads=true)](https://nodei.co/npm/iopa-coap/)
 
 ## About
-`iopa-coap` is a lightweight Constrained Application Protocol (CoAP) protocol server, based on the Internet of Protocols Association (IOPA) open standard  
+`iopa-coap` is a lightweight IOT Constrained Application Protocol (CoAP) protocol server, based on the Internet of Protocols Alliance (IOPA) specification 
 
 It servers CoAP messages in standard IOPA format and allows existing middleware for Connect, Express and limerun projects to consume/send each mesage.
 
 It is an open-source, standards-based, drop-in replacement for CoAP servers such as [`node-coap`](https://github.com/mcollina/node-coap).   
 
-It uses the standards based ['iopa-coap-packet'](https://github.com/iopa-source/iopa-coap-packet) for protocol formatting, which in turn is based on the widely used library ['coap-packet'](https://github.com/mcollina/coap-packet).
+It uses the standards based ['iopa-coap-packet'](https://github.com/iopa-io/iopa-coap-packet) for protocol formatting, which in turn is based on the widely used library ['coap-packet'](https://github.com/mcollina/coap-packet).
 
 Written in plain javascript for maximum portability to constrained devices
 
@@ -21,7 +21,7 @@ Makes CoAP messages look to an application just like an HTTP message so little o
 
 ## Status
 
-Fully working prototype include server and client.
+Fully working server and client.
 
 Includes:
 
@@ -55,67 +55,46 @@ Includes:
 ### Simple Hello World Server and Client with Pub/Sub
 ``` js
 const iopa = require('iopa')
-    , coap = require('./index.js')      
-    , Promise = require('bluebird')
-    , util = require('util');
-
+    , coap = require('iopa-coap')      
 
 var app = new iopa.App();
 
-
 app.use(function(context, next){
-   context.log.info("[DEMO] SERVER CoAP DEMO " + context["iopa.Method"] + " " + context["iopa.Path"]);
-   
+   context.log.info("[DEMO] CoAP APP USE " + context["iopa.Method"] + " " + context["iopa.Path"]);
+  
    if (context["iopa.Method"] === "GET")
    {
-  
      setTimeout(function() {
                 server.publish("/projector", new Buffer("Hello World"));
-            }, 2500);
-   }
-
+            }, 23);
+      }
+       
    return next();
-    });
+});
     
-var serverOptions = {
-    "server.LocalPortReuse" : true
-  , "server.IsGlobalClient" : false
-};
-
-var clientOptions = { "server.IsGlobalClient" : true
-                    , "server.LocalPortReuse" : false};
-                    
-var server = coap.createServer(serverOptions, app.build());
+var server = coap.createServer(app.build());
 
 if (!process.env.PORT)
-  process.env.PORT = 5683;
+  process.env.PORT = iopa.constants.IOPA.PORTS.COAP;
 
-var context;
-var coapClient;
 server.listen(process.env.PORT, process.env.IP)
   .then(function(){
     server.log.info("[DEMO] Server is on port " + server.port );
-    return server.connect("coap://127.0.0.1");
+    return server.connect("coap://127.0.0.1", "CLIENTID-1", false);
   })
-  .then(function(cl){
-    coapClient = cl;
+  .then(function(coapClient){
     server.log.info("[DEMO] Client is on port " + coapClient["server.LocalPort"]);
-    return coapClient.hello("CLIENTID-1", false);
-  })
-  .then(function(){
-       return coapClient.subscribe('/projector', function(context){
-           console.log("[DEMO] CoAP /projector RESPONSE " + context["iopa.Body"].toString());
+    coapClient.subscribe('/projector', function(pubsub){
+           pubsub.log.info("[DEMO] CoAP /projector RESPONSE " + pubsub["iopa.Body"].toString());
            });
-        })
-  .then(function(response){
-       server.log.info("[DEMO] CoAP DEMO Response " + response["iopa.Method"] + " " + response["iopa.Body"].toString());
-       setTimeout(function() {
-                server.publish("/projector", new Buffer("Hello World 2"));
-            }, 1000);
-         setTimeout(function() {
-                server.close().then(function(){server.log.info("CoAP DEMO Closed"); })
-            }, 2000);
-    });
+    setTimeout(function() {
+          server.publish("/projector", new Buffer("Hello World 2"));
+      }, 1000);
+    setTimeout(function() {
+          server.close().then(function(){server.log.info("[DEMO] CoAP DEMO Closed"); })
+      }, 2000);
+ });
+    
 
 ``` 
 

@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2015 Limerun Project Contributors
- * Portions Copyright (c) 2015 Internet of Protocols Assocation (IOPA)
+ * Copyright (c) 2015 Internet of Protocols Alliance (IOPA)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,64 +14,48 @@
  * limitations under the License.
  */
 
+
 const iopa = require('iopa')
-    , coap = require('./index.js')      
-    , Promise = require('bluebird')
-    , util = require('util');
+  , coap = require('./index.js')
+
+const iopaMessageLogger = require('iopa-common-middleware').MessageLogger
 
 var app = new iopa.App();
+app.use(iopaMessageLogger);
 
-app.use(function(context, next){
-   context.log.info("[DEMO] SERVER CoAP DEMO " + context["iopa.Method"] + " " + context["iopa.Path"]);
-   
-   if (context["iopa.Method"] === "GET")
-   {
-  
-     setTimeout(function() {
-                server.publish("/projector", new Buffer("Hello World"));
-            }, 2500);
-   }
+app.use(function (context, next) {
+  context.log.info("[DEMO] CoAP APP USE " + context["iopa.Method"] + " " + context["iopa.Path"]);
 
-   return next();
-    });
-    
-var serverOptions = {
-    "server.LocalPortReuse" : true
-  , "server.IsGlobalClient" : false
-};
+  if (context["iopa.Method"] === "GET") {
 
-var clientOptions = { "server.IsGlobalClient" : true
-                    , "server.LocalPortReuse" : false};
-                    
-var server = coap.createServer(serverOptions, app.build());
+    setTimeout(function () {
+      server.publish("/projector", new Buffer("Hello World"));
+    }, 23);
+  }
+  return next();
+});
+
+var server = coap.createServer(app.build());
+server.connectuse(iopaMessageLogger.connect);
 
 if (!process.env.PORT)
-  process.env.PORT = 5683;
+  process.env.PORT = iopa.constants.IOPA.PORTS.COAP;
 
-var context;
-var coapClient;
 server.listen(process.env.PORT, process.env.IP)
-  .then(function(){
-    server.log.info("[DEMO] Server is on port " + server.port );
-    return server.connect("coap://127.0.0.1");
+  .then(function () {
+    server.log.info("[DEMO] Server is on port " + server.port);
+    return server.connect("coap://127.0.0.1", "CLIENTID-1", false);
   })
-  .then(function(cl){
-    coapClient = cl;
+  .then(function (coapClient) {
     server.log.info("[DEMO] Client is on port " + coapClient["server.LocalPort"]);
-    return coapClient.hello("CLIENTID-1", false);
-  })
-  .then(function(){
-       return coapClient.subscribe('/projector', function(context){
-           console.log("[DEMO] CoAP /projector RESPONSE " + context["iopa.Body"].toString());
-           });
-        })
-  .then(function(response){
-       server.log.info("[DEMO] CoAP DEMO Response " + response["iopa.Method"] + " " + response["iopa.Body"].toString());
-       setTimeout(function() {
-                server.publish("/projector", new Buffer("Hello World 2"));
-            }, 1000);
-         setTimeout(function() {
-                server.close().then(function(){server.log.info("CoAP DEMO Closed"); })
-            }, 2000);
+    coapClient.subscribe('/projector', function (pubsub) {
+      pubsub.log.info("[DEMO] CoAP /projector RESPONSE " + pubsub["iopa.Body"].toString());
     });
+    setTimeout(function () {
+      server.publish("/projector", new Buffer("Hello World 2"));
+    }, 1000);
+    setTimeout(function () {
+      server.close().then(function () { server.log.info("[DEMO] CoAP DEMO Closed"); })
+    }, 2000);
+  });
     

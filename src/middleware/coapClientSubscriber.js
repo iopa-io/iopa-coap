@@ -1,8 +1,5 @@
-/* global ) */
-/* global connect */
 /*
- * Copyright (c) 2015 Limerun Project Contributors
- * Portions Copyright (c) 2015 Internet of Protocols Assocation (IOPA)
+ * Copyright (c) 2015 Internet of Protocols Alliance (IOPA)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +14,12 @@
  * limitations under the License.
  */
  
-const Promise = require('bluebird')
-
+const constants = require('iopa').constants,
+  IOPA = constants.IOPA,
+  SERVER = constants.SERVER,
+  COAP = constants.COAP,
+  SESSION = require('../common/constants.js').COAPSESSION
+  
  var db_Clients = {};
  
 /**
@@ -30,12 +31,50 @@ const Promise = require('bluebird')
  * @public
  */
 function CoAPClientSubscriber(app) {
-    if (!app.properties["server.Capabilities"]["iopa-coap.Version"])
+    if (!app.properties[SERVER.Capabilities]["iopa-coap.Version"])
         throw ("Missing Dependency: CoAP Server/Middleware in Pipeline");
 
-   app.properties["server.Capabilities"]["CoAPClientSubscriber.Version"] = "1.0";
+   app.properties[SERVER.Capabilities]["CoAPClientSubscriber.Version"] = "1.0";
    this.app = app;
-  }
+   
+  this.server = app.server;
+  this.server.connect = this._connect.bind(this, this.server.connect);
+}
+
+/**
+ * @method connect
+ * @this MQTTSessionClient IOPA context dictionary
+ *  @param nextConnect bound to next server.connect in chain 
+ * @param string clientid  
+ * @param bool clean   use clean (persistent) session
+ */
+CoAPClientSubscriber.prototype._connect = function CoAPClientSubscriber_connect(nextConnect, urlStr, clientid, clean){
+  
+  return nextConnect(urlStr).then(function (client) {
+    if (client[IOPA.Scheme] !== IOPA.SCHEMES.COAP && client[IOPA.Scheme] !== IOPA.SCHEMES.COAPS)
+      return client;
+
+    var session;
+    clientid = clientid || client[IOPA.Seq];
+
+    if (!clean && (clientid in db_Clients)) {
+      session = db_Clients[clientid];
+    } else {
+      session = {}
+      session[SESSION.Subscriptions] = {};
+      session[SESSION.PendingMessages] = [];
+    }
+
+    session[SESSION.ClientId] = clientid;
+    session[SESSION.Clean] = clean;
+    session[SERVER.ParentContext] = client;
+
+    client[SESSION.Session] = session;
+    db_Clients[clientid] = session;
+    
+    return client;
+  });
+}
 
 /**
  * @method invoke
@@ -44,86 +83,9 @@ function CoAPClientSubscriber(app) {
  * @param next   IOPA application delegate for the remainder of the pipeline
  */
 CoAPClientSubscriber.prototype.invoke = function CoAPClientSubscriber_invoke(channelContext, next) {
-  //  channelContext["iopa.Events"].on("response", this._client_invokeOnParentResponse.bind(this, channelContext));
-  
-  //  channelContext["iopa.Events"].on("response", this._client_invokeOnParentResponse.bind(this, channelContext));
-   
-    channelContext.hello = this.hello.bind(this, channelContext);
-    channelContext.get = this.transfer.bind(this, channelContext, "GET");
-    channelContext.subscribe = this.subscribe.bind(this, channelContext, "GET");
-    channelContext.put = this.transfer.bind(this, channelContext, "PUT");
-    channelContext.post = this.transfer.bind(this, channelContext, "POST");
-    channelContext.delete = this.transfer.bind(this, channelContext, "DELETE");
-    channelContext.bye = this.bye.bind(this, channelContext);
-    
+    channelContext.subscribe = this.subscribe.bind(this, channelContext);
+    channelContext.disconnect = this.disconnect.bind(this, channelContext);
     return next();
-};
-
-/**
- * @method _client_invokeOnParentResponse
- * @this CoAPSubscriptionClient
- * @param channelContext IOPA parent context dictionary
- * @param context IOPA childResponse context dictionary
- * @param next   IOPA application delegate for the remainder of the pipeline
- */
-CoAPClientSubscriber.prototype._client_invokeOnParentResponse = function CoAPClientSubscriber_client_invokeOnParentResponse(channelContext, subscribeRequestContext, context) {
-   var session = channelContext["coap.Session"];  
-     
-   if (context["coap.Code"] === "2.05" && context["iopa.Headers"]["Observe"]>0)
-     {
-        var resource = subscribeRequestContext["iopa.Path"];
-         
-        if (resource in session["coap.Subscriptions"])
-        {
-             (session["coap.Subscriptions"][resource]).forEach(function(callback){
-                 callback(context);
-             });
-        };
-    }    
-};
-
-/**
- * @method connect
- * @this CoAPClientSubscriber
- * @param string clientid  
- * @param bool clean   use clean (persistent) session
- */
-CoAPClientSubscriber.prototype.hello = function CoAPClientSubscriber_hello(channelContext, ClientId, clean) {
-   
-    var session;
-        
-    if (!clean && (ClientId in db_Clients)) 
-       {
-          session =  db_Clients[ClientId];
-       } else
-       {
-          session = {}
-          session["coap.Subscriptions"] = {};
-          session["coap.PendingMessages"] = [];
-       }
-               
-    session["coap.ClientID"] = ClientId;
-    session["coap.Clean"] = clean; 
-    session["server.ChannelContext"] = channelContext;
-    
-    channelContext["coap.Session"] = session;
-    db_Clients[ClientId] = session;
-  //  channelContext["coapSessionClient._DisconnectListener"] = this.bye.bind(this, channelContext);
- //   channelContext["iopa.Events"].on("disconnect", channelContext["coapSessionClient._DisconnectListener"]);
-        
-    return Promise.resolve(null);
-};
-
-
-/**
- * @method transfer
- * @this CoAPClientSubscriber 
- * @param string resource   IOPA Path of CoAP resource
- */
-CoAPClientSubscriber.prototype.transfer = function CoAPClientSubscriber_transfer(channelContext, method, resource) {
-    
-    var context = channelContext["server.CreateRequest"](resource, method);
-    return context.send();
 };
 
 /**
@@ -132,35 +94,38 @@ CoAPClientSubscriber.prototype.transfer = function CoAPClientSubscriber_transfer
  * @param string topic   IOPA Path of  CoAP resource
  * @param appFunc callback  callback to for published responses
  */
-CoAPClientSubscriber.prototype.subscribe = function CoAPClientSubscriber_subscribe(channelContext, method, resource, callback) {
-     var session = channelContext["coap.Session"];  
-     
-    if (resource in session["coap.Subscriptions"])
-        session["coap.Subscriptions"][resource].push(callback)
-    else
-        session["coap.Subscriptions"][resource] = [callback];
-  
-    var context = channelContext["server.CreateRequest"](resource, "GET");
-    context["iopa.Headers"]["Observe"] = new Buffer('0');
-    context["iopa.Events"].on("response", this._client_invokeOnParentResponse.bind(this, channelContext, context));
-    
-    return context.send();
+CoAPClientSubscriber.prototype.subscribe = function CoAPClientSubscriber_subscribe(channelContext, topic, callback) {
+  var session = channelContext[SESSION.Session];
+
+  if (topic in session[SESSION.Subscriptions])
+    session[SESSION.Subscriptions][topic].push(callback)
+  else
+    session[SESSION.Subscriptions][topic] = [callback];
+
+  var defaults = {};
+  defaults[IOPA.Method] = "GET";
+  defaults[IOPA.Headers] = { "Observe":  new Buffer('0')};
+
+  return channelContext.observe(topic, defaults, function (childContext) {
+    if (childContext[COAP.Code] === "2.05" && childContext[IOPA.Headers]["Observe"] > 0) {
+      callback(childContext);
+    }
+  });
 };
+
 
 /**
  * @method bye
  * @this CoAPClientSubscriber IOPA context dictionary
  * @param channelContext IOPA context
  */
-CoAPClientSubscriber.prototype.bye = function CoAPClientSubscriber_bye(channelContext) {
-      channelContext["server.RawStream"].end();
-   //    channelContext["iopa.Events"].removeListener("disconnect", channelContext["coapSubscriptionClient._DisconnectListener"]);
-   //     delete channelContext["coapSubscriptionClient._DisconnectListener"];
-  
-      var session = channelContext["coap.Session"];
-      var client =  session["coap.ClientID"]; 
+CoAPClientSubscriber.prototype.disconnect = function CoAPClientSubscriber_disconnect(channelContext) {
+      channelContext[SERVER.RawStream].end();
+   
+      var session = channelContext[SESSION.Session];
+      var client =  session[SESSION.ClientId]; 
       
-      if (session["coap.Clean"])
+      if (session[SESSION.Clean])
       {
         if (client in db_Clients)
            {
@@ -169,7 +134,7 @@ CoAPClientSubscriber.prototype.bye = function CoAPClientSubscriber_bye(channelCo
           // silently ignore
          }
   
-          session["coap.Subscriptions"] = {};
+          session[SESSION.Subscriptions] = {};
       };
 }
 
