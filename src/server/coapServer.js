@@ -90,7 +90,7 @@ CoAPServer.prototype._serverMessagePipelineSetup = function (app) {
 
   //   app.use(iopaMessageConfirmableSend);
   app.use(CoAPServerPublisher);
-  //   app.use(CoAPServerAutoAck); 
+  app.use(CoAPServerAutoAck); 
 };
 
 /**
@@ -109,7 +109,7 @@ CoAPServer.prototype._clientConnectPipelineSetup = function (clientConnectApp) {
 CoAPServer.prototype._clientMessageSendPipelineSetup = function (clientMessageApp) {
   
   //  clientMessageApp.use(iopaMessageConfirmableSend);
-  //  clientMessageApp.use(CoAPServerAutoAck);  
+  clientMessageApp.use(CoAPServerAutoAck);  
 };
 
 /* ****************************************************** */

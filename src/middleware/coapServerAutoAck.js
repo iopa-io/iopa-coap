@@ -71,13 +71,14 @@ CoAPServerAutoAck.prototype.invoke = function CoAPServerAutoAck_invoke(context, 
        context.response[SERVER.RawStream] = new iopaStream.OutgoingStreamTransform(this._write.bind(this, context, context.response["server.RawStream"]));  
             context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.TIMER] = setTimeout(function() {
                context[SERVER.WriteAck]();
-         
-                // we are no longer in piggyback
+                 // we need a new messageId for the new reply
+               context.response[IOPA.MessageId] = null;
+                 // we are no longer in piggyback
                 context.response[COAP.Confirmable] = true;
                 context.response[COAP.Ack] = false;
     
-                // we need a new messageId for the new reply
-                context.response[IOPA.MessageId] = null;
+                 context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.DONE]();
+             
                 }, 50);
     } 
     
@@ -95,7 +96,7 @@ CoAPServerAutoAck.prototype._invokeOnParentResponse = function CoAPServerAutoAck
      if (context[COAP.Confirmable])
     {  
         context[SERVER.WriteAck]();
-        context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.DONE]();
+             
    
         // we are no longer in piggyback
         context.response[COAP.Confirmable] = true;

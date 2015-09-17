@@ -30,7 +30,7 @@ app.use(function (context, next) {
 
     setTimeout(function () {
       server.publish("/projector", new Buffer("Hello World"));
-    }, 23);
+    }, 1000);
   }
   return next();
 });
