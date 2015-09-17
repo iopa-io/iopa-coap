@@ -110,17 +110,20 @@ function RetrySender(context, resend) {
         that1.reset();
         that1 = null;
     }
+    var events;
     
+        
     context[IOPA.Events].on(IOPA.EVENTS.Response, context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.RESPONSELISTENER]);
-
+     
     var that2 = this;
     this._maxRetrytimer = setTimeout(function() {
-        context[IOPA.Events].removeListener(IOPA.EVENTS.Response, context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.RESPONSELISTENER]);
+        events.removeListener(IOPA.EVENTS.Response, context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.RESPONSELISTENER]);
         var err = new Error('[CONFIRMABLE] No reply in ' + QOS.exchangeLifetime + 's');
         err.retransmitTimeout = QOS.exchangeLifetime;
         that2.emit('error', err);
         that2.reset();
         that2 = null;
+        events = null;
     }, QOS.exchangeLifetime * 1000);
 
    this._doTimer.call(this, context);
@@ -134,10 +137,11 @@ RetrySender.prototype._doTimer = function _retrySender_doTimer(context) {
 RetrySender.prototype._retry = function _retrySender_retry(context) {
      this._currentTime = this._currentTime * 2;
       try {
-            this._resend();
+             this._resend();
+             context[SERVER.Logger].error("[CONFIRMABLE] RESENT PACKET " + context[IOPA.Seq]);
         }
       catch (err) {
-            context[SERVER.Logger].error("[CONFIRMABLE] Unable to resend packet");
+            context[SERVER.Logger].error("[CONFIRMABLE] Unable to resend packet" + context[IOPA.Seq] + err);
       }
         
      this._doTimer(context);

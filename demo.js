@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 const iopa = require('iopa')
   , coap = require('./index.js')
 
@@ -30,7 +29,7 @@ app.use(function (context, next) {
 
     setTimeout(function () {
       server.publish("/projector", new Buffer("Hello World"));
-    }, 1000);
+    }, 5000);
   }
   return next();
 });
@@ -56,6 +55,6 @@ server.listen(process.env.PORT, process.env.IP)
     }, 1000);
     setTimeout(function () {
       server.close().then(function () { server.log.info("[DEMO] CoAP DEMO Closed"); })
-    }, 2000);
+    }, 10000);
   });
     

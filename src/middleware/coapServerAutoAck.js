@@ -70,7 +70,7 @@ CoAPServerAutoAck.prototype.invoke = function CoAPServerAutoAck_invoke(context, 
        context[COAP.Ack] = true;
        context.response[SERVER.RawStream] = new iopaStream.OutgoingStreamTransform(this._write.bind(this, context, context.response["server.RawStream"]));  
             context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.TIMER] = setTimeout(function() {
-               context[SERVER.WriteAck]();
+                 context[SERVER.WriteAck]();
                  // we need a new messageId for the new reply
                context.response[IOPA.MessageId] = null;
                  // we are no longer in piggyback
@@ -80,7 +80,7 @@ CoAPServerAutoAck.prototype.invoke = function CoAPServerAutoAck_invoke(context, 
                  context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.DONE]();
              
                 }, 50);
-    } 
+    } ;
     
    return next().then(function(){ return p });
 };
@@ -97,14 +97,13 @@ CoAPServerAutoAck.prototype._invokeOnParentResponse = function CoAPServerAutoAck
     {  
         context[SERVER.WriteAck]();
              
-   
         // we are no longer in piggyback
         context.response[COAP.Confirmable] = true;
         context.response[COAP.Ack] = false;
     
         // we need a new messageId for any further reply
         context.response[IOPA.MessageId] = null;
-    } 
+    } ;
 };
 
 /**
