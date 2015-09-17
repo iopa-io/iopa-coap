@@ -67,3 +67,6 @@ exports.COAPSESSION = {
   Session: "coapSession.Session",
   ObservationSeq: "CoapSession.ObservationSeq"
 }
+
+exports.COAPMIDDLEWARE = {CAPABILITY: "urn:io.iopa:coap", PROTOCOLVERSION: "RFC 7252"}
+   

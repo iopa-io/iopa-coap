@@ -23,6 +23,13 @@ const Events = require('events');
 const QOS = require('../common/constants.js').QOS
  , iopaStream = require('iopa-common-stream');
  
+ const THISMIDDLEWARE = {CAPABILITY: "urn:io.iopa:coap:confirmablesend",
+  RETRYSENDER: "confirmablesend.RetrySender",
+  RESPONSELISTENER: "confirmablesend.ResponseListener"},
+     packageVersion = require('../../package.json').version,
+     COAPMIDDLEWARE = require('../common/constants.js').COAPMIDDLEWARE
+
+ 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 /**
@@ -33,10 +40,11 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
  * @constructor
  */
 function IopaMessageConfirmableSend(app) {
-    if (!app.properties[SERVER.Capabilities]["iopa-coap.Version"])
-        throw ("Missing Dependency: CoAP Server/Middleware in Pipeline");
+    if (!app.properties[SERVER.Capabilities][COAPMIDDLEWARE.CAPABILITY])
+    throw ("Missing Dependency: IOPA CoAP Server/Middleware in Pipeline");
 
-    app.properties[SERVER.Capabilities]["coapResponseConfirmableSend.Version"] = "1.0";
+  app.properties[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY] = {};
+  app.properties[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][SERVER.Version] = packageVersion;
 }
 
 /**
@@ -70,7 +78,7 @@ IopaMessageConfirmableSend.prototype._write = function IopaMessageConfirmableSen
     if (context[SERVER.Retry])
     {
              var oldChunk = chunk.slice();
-             context["coapResponseConfirmableSend._retrySender"] = new RetrySender(context,  nextStream.write.bind(nextStream, oldChunk, encoding));
+             context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.RETRYSENDER] = new RetrySender(context,  nextStream.write.bind(nextStream, oldChunk, encoding));
        }
 
     nextStream.write(chunk, encoding, callback);
@@ -97,17 +105,17 @@ function RetrySender(context, resend) {
     
     var that1 = this;
 
-    context["IopaMessageConfirmableSend.responseListener"] = function(rData) {
-        context[IOPA.Events].removeListener(IOPA.EVENTS.Response, context["IopaMessageConfirmableSend.responseListener"]);
+    context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.RESPONSELISTENER] = function(rData) {
+        context[IOPA.Events].removeListener(IOPA.EVENTS.Response,context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.RESPONSELISTENER]);
         that1.reset();
         that1 = null;
     }
     
-    context[IOPA.Events].on(IOPA.EVENTS.Response, context["IopaMessageConfirmableSend.responseListener"]);
+    context[IOPA.Events].on(IOPA.EVENTS.Response, context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.RESPONSELISTENER]);
 
     var that2 = this;
     this._maxRetrytimer = setTimeout(function() {
-        context[IOPA.Events].removeListener(IOPA.EVENTS.Response, context["IopaMessageConfirmableSend.responseListener"]);
+        context[IOPA.Events].removeListener(IOPA.EVENTS.Response, context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.RESPONSELISTENER]);
         var err = new Error('[CONFIRMABLE] No reply in ' + QOS.exchangeLifetime + 's');
         err.retransmitTimeout = QOS.exchangeLifetime;
         that2.emit('error', err);

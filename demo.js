@@ -18,7 +18,7 @@
 const iopa = require('iopa')
   , coap = require('./index.js')
 
-const iopaMessageLogger = require('iopa-common-middleware').MessageLogger
+const iopaMessageLogger = require('iopa-logger').MessageLogger
 
 var app = new iopa.App();
 app.use(iopaMessageLogger);
@@ -36,7 +36,7 @@ app.use(function (context, next) {
 });
 
 var server = coap.createServer(app.build());
-server.connectuse(iopaMessageLogger.connect);
+server.connectuse(iopaMessageLogger);
 
 if (!process.env.PORT)
   process.env.PORT = iopa.constants.IOPA.PORTS.COAP;

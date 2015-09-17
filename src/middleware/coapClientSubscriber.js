@@ -18,9 +18,13 @@ const constants = require('iopa').constants,
   IOPA = constants.IOPA,
   SERVER = constants.SERVER,
   COAP = constants.COAP,
-  SESSION = require('../common/constants.js').COAPSESSION
+  SESSION = require('../common/constants.js').COAPSESSION,
+  COAPMIDDLEWARE = require('../common/constants.js').COAPMIDDLEWARE
   
  var db_Clients = {};
+ 
+ const THISMIDDLEWARE = {CAPABILITY: "urn:io.iopa:coap:clientsubscriber"},
+     packageVersion = require('../../package.json').version;
  
 /**
  * CoAP IOPA Middleware for Managing Server Sessions including Auto Subscribing Client Subscribe Requests
@@ -31,12 +35,18 @@ const constants = require('iopa').constants,
  * @public
  */
 function CoAPClientSubscriber(app) {
-    if (!app.properties[SERVER.Capabilities]["iopa-coap.Version"])
-        throw ("Missing Dependency: CoAP Server/Middleware in Pipeline");
+  if (!app.properties[SERVER.Capabilities][COAPMIDDLEWARE.CAPABILITY])
+    throw ("Missing Dependency: IOPA CoAP Server/Middleware in Pipeline");
 
-   app.properties[SERVER.Capabilities]["CoAPClientSubscriber.Version"] = "1.0";
-   this.app = app;
-   
+  app.properties[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY] = {};
+  app.properties[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][SERVER.Version] = packageVersion;
+
+ //Also register as standard IOPA PUB/SUB SUBSCRIBE MIDDLEWARE
+  app.properties[SERVER.Capabilities][IOPA.CAPABILITIES.Subscribe] = {};
+  app.properties[SERVER.Capabilities][IOPA.CAPABILITIES.Subscribe][SERVER.Version] = app.properties[SERVER.Capabilities][IOPA.CAPABILITIES.App][SERVER.Version];
+
+  this.app = app;
+
   this.server = app.server;
   this.server.connect = this._connect.bind(this, this.server.connect);
 }
@@ -69,7 +79,7 @@ CoAPClientSubscriber.prototype._connect = function CoAPClientSubscriber_connect(
     session[SESSION.Clean] = clean;
     session[SERVER.ParentContext] = client;
 
-    client[SESSION.Session] = session;
+    client[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][SESSION.Session] = session;
     db_Clients[clientid] = session;
     
     return client;
@@ -95,7 +105,7 @@ CoAPClientSubscriber.prototype.invoke = function CoAPClientSubscriber_invoke(cha
  * @param appFunc callback  callback to for published responses
  */
 CoAPClientSubscriber.prototype.subscribe = function CoAPClientSubscriber_subscribe(channelContext, topic, callback) {
-  var session = channelContext[SESSION.Session];
+  var session = channelContext[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][SESSION.Session];
 
   if (topic in session[SESSION.Subscriptions])
     session[SESSION.Subscriptions][topic].push(callback)
@@ -122,7 +132,7 @@ CoAPClientSubscriber.prototype.subscribe = function CoAPClientSubscriber_subscri
 CoAPClientSubscriber.prototype.disconnect = function CoAPClientSubscriber_disconnect(channelContext) {
       channelContext[SERVER.RawStream].end();
    
-      var session = channelContext[SESSION.Session];
+      var session = channelContext[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][SESSION.Session];
       var client =  session[SESSION.ClientId]; 
       
       if (session[SESSION.Clean])

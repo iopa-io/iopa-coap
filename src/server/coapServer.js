@@ -13,19 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 const util = require('util')
- 
+
 const iopa = require('iopa')
   , Coap = require('iopa-coap-packet')
   , IopaServer = require('iopa-server');
 
-const  CoAPClientSubscriber = require('../middleware/coapClientSubscriber.js')
-   , CoAPServerAutoAck = require('../middleware/coapServerAutoAck.js')
-   , CoAPServerPublisher = require('../middleware/coapServerPublisher.js') 
-   , iopaMessageConfirmableSend = require('../middleware/iopaMessageConfirmableSend.js') 
-  
+const constants = require('iopa').constants,
+  IOPA = constants.IOPA,
+  SERVER = constants.SERVER,
+  COAP = constants.COAP
+
+const CoAPClientSubscriber = require('../middleware/coapClientSubscriber.js')
+  , CoAPServerAutoAck = require('../middleware/coapServerAutoAck.js')
+  , CoAPServerPublisher = require('../middleware/coapServerPublisher.js')
+  , iopaMessageConfirmableSend = require('../middleware/iopaMessageConfirmableSend.js')
+
 const iopaMessageLogger = require('iopa-common-middleware').MessageLogger
+
+const COAPMIDDLEWARE = require('../common/constants.js').COAPMIDDLEWARE,
+  packageVersion = require('../../package.json').version
 
 /* *********************************************************
  * IOPA CoAP SERVER / CLIENT WITH MIDDLEWARE CONSTRUCTED
@@ -42,8 +50,8 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
  * @constructor
  */
 function CoAPServer(options, appFunc) {
-   _classCallCheck(this, CoAPServer);
-    
+  _classCallCheck(this, CoAPServer);
+
   if (typeof options === 'function') {
     appFunc = options;
     options = {};
@@ -56,7 +64,7 @@ function CoAPServer(options, appFunc) {
     */
   IopaServer.call(this, options, appFunc);
         
-   // INIT COAP SERVER
+  // INIT COAP SERVER
   this._coap = Coap.createServer(options, this._serverRequestPipeline, this.clientPipeline);
 }
 
@@ -76,14 +84,13 @@ CoAPServer.prototype._serverChannelPipelineSetup = function (serverApp) {
  * @InheritDoc
  */
 CoAPServer.prototype._serverMessagePipelineSetup = function (app) {
-   app.properties["server.Capabilities"]["iopa-coap.Version"] = "1.0";
-   app.properties["server.Capabilities"]["iopa-coap.Support"] = {
-       "coap.Version": "RFC 7252"
-      };
-         
-//   app.use(iopaMessageConfirmableSend);
-   app.use(CoAPServerPublisher);
-//   app.use(CoAPServerAutoAck); 
+  app.properties[SERVER.Capabilities][COAPMIDDLEWARE.CAPABILITY] = {};
+  app.properties[SERVER.Capabilities][COAPMIDDLEWARE.CAPABILITY][SERVER.Version] = packageVersion;
+  app.properties[SERVER.Capabilities][COAPMIDDLEWARE.CAPABILITY][IOPA.Protocol] = COAPMIDDLEWARE.PROTOCOLVERSION;
+
+  //   app.use(iopaMessageConfirmableSend);
+  app.use(CoAPServerPublisher);
+  //   app.use(CoAPServerAutoAck); 
 };
 
 /**
@@ -91,13 +98,8 @@ CoAPServer.prototype._serverMessagePipelineSetup = function (app) {
  * @InheritDoc
  */
 CoAPServer.prototype._clientConnectPipelineSetup = function (clientConnectApp) {
-  
-   clientConnectApp.properties["server.Capabilities"]["iopa-coap.Version"] = "1.0";
-    clientConnectApp.properties["server.Capabilities"]["iopa-coap.Support"] = {
-       "coap.Version": "RFC 7252"
-      };
-  
-   clientConnectApp.use(CoAPClientSubscriber);
+
+  clientConnectApp.use(CoAPClientSubscriber);
 };
 
 /**
@@ -105,12 +107,9 @@ CoAPServer.prototype._clientConnectPipelineSetup = function (clientConnectApp) {
  * @InheritDoc
  */
 CoAPServer.prototype._clientMessageSendPipelineSetup = function (clientMessageApp) {
-  clientMessageApp.properties["server.Capabilities"]["iopa-coap.Version"] = "1.2";
-  clientMessageApp.properties["server.Capabilities"]["iopa-coap.Support"] = {
-     "coap.Version": "RFC 7252"
-  };
-//  clientMessageApp.use(iopaMessageConfirmableSend);
-//  clientMessageApp.use(CoAPServerAutoAck);  
+  
+  //  clientMessageApp.use(iopaMessageConfirmableSend);
+  //  clientMessageApp.use(CoAPServerAutoAck);  
 };
 
 /* ****************************************************** */
@@ -127,7 +126,7 @@ CoAPServer.prototype._clientMessageSendPipelineSetup = function (clientMessageAp
  * @public
  */
 CoAPServer.prototype._listen = function CoAPServer_listen(port, address) {
-   return this._coap.listen(port, address);
+  return this._coap.listen(port, address);
 };
 
 Object.defineProperty(CoAPServer.prototype, "port", { get: function () { return this._coap.port; } });

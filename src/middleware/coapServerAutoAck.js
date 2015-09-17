@@ -20,7 +20,12 @@ const constants = require('iopa').constants,
   COAP = constants.COAP;
   
 const iopaStream = require('iopa-common-stream');
-    
+
+const THISMIDDLEWARE = {CAPABILITY: "urn:io.iopa:coap:autoack", TIMER: "autoack.Timer", DONE: "autoack.Done"},
+     packageVersion = require('../../package.json').version,
+     COAPMIDDLEWARE = require('../common/constants.js').COAPMIDDLEWARE
+  
+ 
 /**
  * CoAP IOPA Middleware for Auto Acknowledging Server Requests
  *
@@ -30,10 +35,12 @@ const iopaStream = require('iopa-common-stream');
  * @public
  */
 function CoAPServerAutoAck(app) {
-    if (!app.properties[SERVER.Capabilities]["iopa-coap.Version"])
-        throw ("Missing Dependency: CoAP Server/Middleware in Pipeline");
+   if (!app.properties[SERVER.Capabilities][COAPMIDDLEWARE.CAPABILITY])
+    throw ("Missing Dependency: IOPA CoAP Server/Middleware in Pipeline");
 
-   app.properties[SERVER.Capabilities]["CoAPAutoAck.Version"] = "1.0";
+  app.properties[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY] = {};
+  app.properties[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][SERVER.Version] = packageVersion;
+
 }
 
 /**
@@ -53,11 +60,16 @@ CoAPServerAutoAck.prototype.invoke = function CoAPServerAutoAck_invoke(context, 
   //  if (context["iopa.METHOD"] > '0.00' && context["iopa.METHOD"] <'1.00')
       // transfer to request for matching
       
+     var p = new Promise(function(resolve, reject){
+        context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.DONE] = resolve;
+    }); 
+ 
+      
     if (context[COAP.Confirmable])
     {  
        context[COAP.Ack] = true;
        context.response[SERVER.RawStream] = new iopaStream.OutgoingStreamTransform(this._write.bind(this, context, context.response["server.RawStream"]));  
-            context["CoAPAutoAck._acknowledgeTimer"] = setTimeout(function() {
+            context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.TIMER] = setTimeout(function() {
                context[SERVER.WriteAck]();
          
                 // we are no longer in piggyback
@@ -69,7 +81,7 @@ CoAPServerAutoAck.prototype.invoke = function CoAPServerAutoAck_invoke(context, 
                 }, 50);
     } 
     
-    return next();
+   return next().then(function(){ return p });
 };
 
 /**
@@ -82,8 +94,9 @@ CoAPServerAutoAck.prototype.invoke = function CoAPServerAutoAck_invoke(context, 
 CoAPServerAutoAck.prototype._invokeOnParentResponse = function CoAPServerAutoAck_invokeOnParentResponse(channelContext, context) {
      if (context[COAP.Confirmable])
     {  
-     context[SERVER.WriteAck]();
-         
+        context[SERVER.WriteAck]();
+        context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.DONE]();
+   
         // we are no longer in piggyback
         context.response[COAP.Confirmable] = true;
         context.response[COAP.Ack] = false;
@@ -103,10 +116,11 @@ CoAPServerAutoAck.prototype._invokeOnParentResponse = function CoAPServerAutoAck
  * @private
 */
 CoAPServerAutoAck.prototype._write = function CoAPServerAutoAck_write(context, nextStream, chunk, encoding, callback) {
-    if (context["CoAPAutoAck._acknowledgeTimer"])
+    if (context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.TIMER])
     {
-         clearTimeout(context["CoAPAutoAck._acknowledgeTimer"]);
-        context["CoAPAutoAck._acknowledgeTimer"] = null;
+        clearTimeout(context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.TIMER]);
+        context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.TIMER] = null;
+        context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.DONE]();
     }
  
     nextStream.write(chunk, encoding, callback);
