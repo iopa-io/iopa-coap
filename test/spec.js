@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-global.Promise = require('bluebird');
- 
 const iopa = require('iopa')
     , util = require('util')
     , Events = require('events')
