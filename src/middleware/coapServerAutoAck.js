@@ -45,44 +45,45 @@ function CoAPServerAutoAck(app) {
 
 /**
  * @method invoke
- * @this context IOPA context dictionary
+ * @param context IOPA context dictionary
  * @param next   IOPA application delegate for the remainder of the pipeline
  */
 CoAPServerAutoAck.prototype.invoke = function CoAPServerAutoAck_invoke(context, next) {
-    if(context[SERVER.IsLocalOrigin])
-    {
-         context[IOPA.Events].on(IOPA.EVENTS.Response, this._invokeOnParentResponse.bind(this, context)); 
+     if (!context[COAP.Confirmable])
         return next();
-    } 
-    
-    // SERVER
-    
-  //  if (context["iopa.METHOD"] > '0.00' && context["iopa.METHOD"] <'1.00')
-      // transfer to request for matching
-      
-     var p = new Promise(function(resolve, reject){
-        context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.DONE] = resolve;
-    }); 
- 
-      
-    if (context[COAP.Confirmable])
-    {  
-       context[COAP.Ack] = true;
-       context.response[SERVER.RawStream] = new iopaStream.OutgoingStreamTransform(this._write.bind(this, context, context.response["server.RawStream"]));  
-            context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.TIMER] = setTimeout(function() {
-                 context[SERVER.WriteAck]();
-                 // we need a new messageId for the new reply
-               context.response[IOPA.MessageId] = null;
-                 // we are no longer in piggyback
-                context.response[COAP.Confirmable] = true;
-                context.response[COAP.Ack] = false;
-    
-                 context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.DONE]();
-             
-                }, 50);
-    } ;
-    
-   return next().then(function(){ return p });
+        
+     var p = new Promise(function (resolve, reject) {
+         context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.DONE] = resolve;
+     });
+
+     context[COAP.Ack] = true;
+     context.response[SERVER.RawStream] = new iopaStream.OutgoingStreamTransform(this._write.bind(this, context, context.response["server.RawStream"]));
+
+     context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.TIMER] = setTimeout(function () {
+
+         context[SERVER.WriteAck]();
+         // we need a new messageId for the new reply
+         context.response[IOPA.MessageId] = null;
+         // we are no longer in piggyback
+         context.response[COAP.Confirmable] = true;
+         context.response[COAP.Ack] = false;
+
+         context[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][THISMIDDLEWARE.DONE]();
+
+     }, 50);
+
+
+     return next().then(function () { return p });
+};
+
+/**
+ * @method invoke
+ * @this context IOPA context dictionary
+ * @param next   IOPA application delegate for the remainder of the pipeline
+ */
+CoAPServerAutoAck.prototype.dispatch = function CoAPServerAutoAck_dispatch(context, next) {
+    context[IOPA.Events].on(IOPA.EVENTS.Response, this._invokeOnParentResponse.bind(this, context)); 
+    return next();
 };
 
 /**

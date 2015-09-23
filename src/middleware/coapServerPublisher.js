@@ -47,9 +47,20 @@ function CoapServerPublisher(app) {
     app.properties[SERVER.Capabilities][IOPA.CAPABILITIES.Publish][SERVER.Version] = app.properties[SERVER.Capabilities][IOPA.CAPABILITIES.App][SERVER.Version];
 
     this.app = app;
-    this.server = app.server;
+     app[IOPA.PUBSUB.Publish]  = this._publish.bind(this, app[IOPA.PUBSUB.Publish] || function(){return Promise.resolve(null)});
+}
 
-    this.server.publish = this.publish.bind(this);
+
+/**
+ * @method publish
+ * @this MQTTSessionManager IOPA context dictionary
+ * @param string topic   IOPA Path of  MQTT topic
+ * @param buffer payload  payload to publish to all subscribed clients
+ */
+CoapServerPublisher.prototype._publish = function CoapServerPublisher_publish(nextPublish, topic, payload) {
+  return nextPublish(topic, payload).then(function(){
+     return CoapServerPublisher_publishCoAP(topic, payload);
+  });
 }
 
 /**
@@ -90,6 +101,8 @@ CoapServerPublisher.prototype.invoke = function CoapServerPublisher_invoke(conte
         subscription[IOPA.Headers] = context.response[IOPA.Headers];
         subscription[IOPA.Body] = context.response[IOPA.Body];
         subscription[SESSION.ObservationSeq] = 1;
+        subscription[SERVER.CancelTokenSource] = context[SERVER.CancelTokenSource];
+      
         client[SESSION.Subscriptions][topic] = subscription;
    
         // Add to global subscriptions
@@ -107,8 +120,7 @@ CoapServerPublisher.prototype.invoke = function CoapServerPublisher_invoke(conte
         return next()
             .then(function () {
                 return new Promise(function (resolve, reject) {
-                    context[IOPA.Events].on(IOPA.EVENTS.Disconnect, resolve);
-                    context[IOPA.Events].on(IOPA.EVENTS.Finish, resolve);
+                    context[IOPA.CancelToken].onCancelled(resolve);
                 });
 
             });
@@ -140,6 +152,7 @@ CoapServerPublisher.prototype.unsubsubscribe = function CoapServerPublisher_unsu
                     // SILENTLY IGNORE NOT SUBSCRIBED FOR ANY CLIENT ON THIS TOPIC
                 }
             });
+            client[SERVER.CancelTokenSource].cancel("urn:io.iopa:coap:unsubsubscribe");
             delete db_Clients[clientId];
         });
     }
@@ -150,7 +163,7 @@ CoapServerPublisher.prototype.unsubsubscribe = function CoapServerPublisher_unsu
  * @param string topic   IOPA Path of  CoAP resource
  * @param buffer payload  payload to publish to all subscribed clients
  */
-CoapServerPublisher.prototype.publish = function CoapServerPublisher_publish(topic, payload) {
+function CoapServerPublisher_publishCoAP(topic, payload) {
     if (topic in db_Subscriptions) 
     { 
         var client;
@@ -169,6 +182,9 @@ CoapServerPublisher.prototype.publish = function CoapServerPublisher_publish(top
     } else {
         // no subscriptions, ignore
     }
+    
+    return Promise.resolve(null);  // could return promise all and check for PUBACK And delete from db_Clients on no response
+ 
 };
 
 module.exports = CoapServerPublisher;

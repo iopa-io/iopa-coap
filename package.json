@@ -18,11 +18,9 @@
   "dependencies": {
     "iopa": "^1.2.0",
     "iopa-coap-packet": "^1.2.0",
-    "iopa-server": "^1.2.0",
     "iopa-common-middleware": "^1.2.0",
-    "iopa-common-stream": "^1.2.0",
-    "lru-cache": "^2.7.0"
-  },
+    "iopa-common-stream": "^1.2.0"
+    },
   "keywords": [
     "iot",
     "iotivity",
@@ -47,13 +45,15 @@
   },
   "scripts": {
     "test": "mocha --reporter spec test",
-    "quick": "git add . -A && git commit -m 'dev test' && npm version patch && npm publish",
+    "quick": "git add . -A && git commit --allow-empty -m 'dev test' && npm version patch && npm publish",
     "typings": "tsd reinstall --overwrite --clean --config tools/tsd.json && tsd link"
   },
   "devDependencies": {
+    "bluebird": "^2.10.0",
+    "iopa-logger": "^1.2.0",
+    "iopa-udp": "^1.2.0",
     "mocha": "^2.3.2",
     "mocha-junit-reporter": "^1.6.1",
-    "should": "^7.1.0",
-    "iopa-logger": "^1.2.0"
+    "should": "^7.1.0"
   }
 }

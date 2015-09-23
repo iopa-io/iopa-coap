@@ -14,13 +14,18 @@
  * limitations under the License.
  */
 
+global.Promise = require('bluebird');
+
 const iopa = require('iopa')
   , coap = require('./index.js')
+  , udp = require('iopa-udp')
+  , IOPA = iopa.constants.IOPA
 
 const iopaMessageLogger = require('iopa-logger').MessageLogger
 
 var app = new iopa.App();
 app.use(iopaMessageLogger);
+app.use(coap);
 
 app.use(function (context, next) {
   context.log.info("[DEMO] CoAP APP USE " + context["iopa.Method"] + " " + context["iopa.Path"]);
@@ -28,33 +33,33 @@ app.use(function (context, next) {
   if (context["iopa.Method"] === "GET") {
 
     setTimeout(function () {
-      server.publish("/projector", new Buffer("Hello World"));
-    }, 5000);
+      server[IOPA.PUBSUB.Publish]("/projector", new Buffer("Hello World"));
+    }, 50);
   }
   return next();
 });
 
-var server = coap.createServer(app.build());
-server.connectuse(iopaMessageLogger);
+var server = udp.createServer(app.build());
+server[IOPA.PUBSUB.Publish] = app[IOPA.PUBSUB.Publish];
 
 if (!process.env.PORT)
   process.env.PORT = iopa.constants.IOPA.PORTS.COAP;
 
 server.listen(process.env.PORT, process.env.IP)
   .then(function () {
-    server.log.info("[DEMO] Server is on port " + server.port);
+    app.log.info("[DEMO] Server is on port " + server.port);
     return server.connect("coap://127.0.0.1", "CLIENTID-1", false);
   })
   .then(function (coapClient) {
-    server.log.info("[DEMO] Client is on port " + coapClient["server.LocalPort"]);
-    coapClient.subscribe('/projector', function (pubsub) {
+    app.log.info("[DEMO] Client is on port " + coapClient["server.LocalPort"]);
+    coapClient[IOPA.PUBSUB.Subscribe]('/projector', function (pubsub) {
       pubsub.log.info("[DEMO] CoAP /projector RESPONSE " + pubsub["iopa.Body"].toString());
     });
     setTimeout(function () {
-      server.publish("/projector", new Buffer("Hello World 2"));
+      server[IOPA.PUBSUB.Publish]("/projector", new Buffer("Hello World 2"));
     }, 1000);
     setTimeout(function () {
-      server.close().then(function () { server.log.info("[DEMO] CoAP DEMO Closed"); })
-    }, 10000);
+      server.close().then(function () { app.log.info("[DEMO] CoAP DEMO Closed"); })
+    }, 5000);
   });
     

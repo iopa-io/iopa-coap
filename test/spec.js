@@ -13,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+global.Promise = require('bluebird');
 
-const iopa = require('iopa')
-    , util = require('util')
-    , Events = require('events')
-    , coap = require('../index.js');
-    
+const iopa = require('iopa'),
+    util = require('util'),
+    EventEmitter = require('events').EventEmitter,
+    coap = require('../index.js'),
+    udp = require('iopa-udp');
+   
 var should = require('should');
 
 var numberConnections = 0;
@@ -28,20 +30,21 @@ const iopaMessageLogger = require('iopa-logger').MessageLogger
 describe('#CoAP Server()', function() {
   
   var server, coapClient;
-  var events = new Events.EventEmitter();
+  var events = new EventEmitter();
 
   before(function (done) {
 
     var app = new iopa.App();
 
     app.use(iopaMessageLogger);
+    app.use(coap);
 
     app.use(function (context, next) {
       context.log.info("[TEST] SERVER CoAP APP USE " + context["iopa.Method"] + " " + context["iopa.Path"]);
 
       if (context["iopa.Headers"]['Observe']) {
         process.nextTick(function(){
-          server.publish("/projector", new Buffer("Hello World2"));});
+          app["pubsub.Publish"]("/projector", new Buffer("Hello World2"));});
         setTimeout(function () {
           events.emit("data2", context);
         }, 40);
@@ -55,9 +58,8 @@ describe('#CoAP Server()', function() {
 
    });
                                  
-    server = coap.createServer(app.build());
-    server.connectuse(iopaMessageLogger);
-
+    server = udp.createServer(app.build());
+  
     if (!process.env.PORT)
       process.env.PORT = iopa.constants.IOPA.PORTS.COAP;
 
@@ -100,7 +102,7 @@ describe('#CoAP Server()', function() {
    });
 
    it('should SUBSCRIBE via CoAP', function (done) {
-     coapClient.subscribe("/projector", function (response) {
+     coapClient["pubsub.Subscribe"]("/projector", function (response) {
        response.log.info("[TEST] CoAP /projector RESPONSE " + response["iopa.Body"].toString());
        response["iopa.Method"].should.equal('2.05');
        response["iopa.Body"].toString().should.equal('Hello World2');
@@ -108,16 +110,16 @@ describe('#CoAP Server()', function() {
      });
    });
 
- /*  it('should PUBLISH state via CoAP', function (done) {
+   it('should PUBLISH state via CoAP', function (done) {
      events.once("data2", function (context) {
        done();
      });
-   });  */
+   });  
     
-  /*  it('should close', function(done) {
+   it('should close', function(done) {
        server.close().then(function(){
-         server.log.info("[TEST] CoAP Closed");
+         console.log("[TEST] CoAP Closed");
          done();});
-    });*/
+    });
     
 });

@@ -16,19 +16,17 @@
 
 const constants = require('iopa').constants,
   IOPA = constants.IOPA,
-  SERVER = constants.SERVER,
-  COAP = constants.COAP;
+  SERVER = constants.SERVER;
   
 const Events = require('events');
 const QOS = require('../common/constants.js').QOS
  , iopaStream = require('iopa-common-stream');
  
- const THISMIDDLEWARE = {CAPABILITY: "urn:io.iopa:coap:confirmablesend",
+ const THISMIDDLEWARE = {CAPABILITY: "urn:io.iopa:confirmablesend",
   RETRYSENDER: "confirmablesend.RetrySender",
   RESPONSELISTENER: "confirmablesend.ResponseListener"},
      packageVersion = require('../../package.json').version,
      COAPMIDDLEWARE = require('../common/constants.js').COAPMIDDLEWARE
-
  
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -40,9 +38,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
  * @constructor
  */
 function IopaMessageConfirmableSend(app) {
-    if (!app.properties[SERVER.Capabilities][COAPMIDDLEWARE.CAPABILITY])
-    throw ("Missing Dependency: IOPA CoAP Server/Middleware in Pipeline");
-
   app.properties[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY] = {};
   app.properties[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][SERVER.Version] = packageVersion;
 }
@@ -54,15 +49,21 @@ function IopaMessageConfirmableSend(app) {
  */
 IopaMessageConfirmableSend.prototype.invoke = function IopaMessageConfirmableSend_invoke(context, next) { 
     
-  if (context[SERVER.IsLocalOrigin])
-     // CLIENT REQUEST OUT
-      context[SERVER.RawStream] = new iopaStream.OutgoingStreamTransform(this._write.bind(this, context, context[SERVER.RawStream]));  
-  else if (context[SERVER.IsRequest]) 
-    // SERVER REQUEST IN
-     context.response[SERVER.RawStream] = new iopaStream.OutgoingStreamTransform(this._write.bind(this, context.response, context.response[SERVER.RawStream])); 
-    
+   context.response[SERVER.RawStream] = new iopaStream.OutgoingStreamTransform(this._write.bind(this, context.response, context.response[SERVER.RawStream])); 
    return next();
 };
+
+/**
+ * @method invoke
+ * @this context IOPA context dictionary
+ * @param next   IOPA application delegate for the remainder of the pipeline
+ */
+IopaMessageConfirmableSend.prototype.dispatch = function IopaMessageConfirmableSend_dispatch(context, next) { 
+    
+   context[SERVER.RawStream] = new iopaStream.OutgoingStreamTransform(this._write.bind(this, context, context[SERVER.RawStream]));  
+   return next();
+};
+
 
 /**
  * @method _write
@@ -87,7 +88,7 @@ IopaMessageConfirmableSend.prototype._write = function IopaMessageConfirmableSen
 var retryId = 0;
 
 /**
- * Internal UDP Sender that keeps retrying sends until reset by "coap.Finish" event
+ * Internal IOPA Sender that keeps retrying sends until reset by iopa.Response event
  *
  * @class RetrySender
  * @this context IOPA context dictionary

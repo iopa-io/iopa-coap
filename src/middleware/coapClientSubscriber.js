@@ -46,10 +46,7 @@ function CoAPClientSubscriber(app) {
   app.properties[SERVER.Capabilities][IOPA.CAPABILITIES.Subscribe][SERVER.Version] = app.properties[SERVER.Capabilities][IOPA.CAPABILITIES.App][SERVER.Version];
 
   this.app = app;
-
-  this.server = app.server;
-  this.server.connect = this._connect.bind(this, this.server.connect);
-}
+ }
 
 /**
  * @method connect
@@ -58,16 +55,14 @@ function CoAPClientSubscriber(app) {
  * @param string clientid  
  * @param bool clean   use clean (persistent) session
  */
-CoAPClientSubscriber.prototype._connect = function CoAPClientSubscriber_connect(nextConnect, urlStr, clientid, clean){
-  
-  return nextConnect(urlStr).then(function (client) {
-    if (client[IOPA.Scheme] !== IOPA.SCHEMES.COAP && client[IOPA.Scheme] !== IOPA.SCHEMES.COAPS)
-      return client;
+CoAPClientSubscriber.prototype.connect = function CoAPClientSubscriber_connect(channelContext, next){
+    if (channelContext[IOPA.Scheme] !== IOPA.SCHEMES.COAP && channelContext[IOPA.Scheme] !== IOPA.SCHEMES.COAPS)
+      return next();
 
     var session;
-    clientid = clientid || client[IOPA.Seq];
+    var clientid = channelContext[SERVER.SessionId];
 
-    if (!clean && (clientid in db_Clients)) {
+    if (!channelContext[IOPA.PUBSUB.Clean] && (clientid in db_Clients)) {
       session = db_Clients[clientid];
     } else {
       session = {}
@@ -76,27 +71,18 @@ CoAPClientSubscriber.prototype._connect = function CoAPClientSubscriber_connect(
     }
 
     session[SESSION.ClientId] = clientid;
-    session[SESSION.Clean] = clean;
-    session[SERVER.ParentContext] = client;
+    session[SESSION.Clean] = channelContext[IOPA.PUBSUB.Clean] || false;
+    session[SERVER.ParentContext] = channelContext;
 
-    client[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][SESSION.Session] = session;
+    channelContext[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][SESSION.Session] = session;
     db_Clients[clientid] = session;
     
-    return client;
-  });
-}
-
-/**
- * @method invoke
- * @this CoAPClientSubscriber
- * @param channelContext IOPA context dictionary
- * @param next   IOPA application delegate for the remainder of the pipeline
- */
-CoAPClientSubscriber.prototype.invoke = function CoAPClientSubscriber_invoke(channelContext, next) {
-    channelContext.subscribe = this.subscribe.bind(this, channelContext);
-    channelContext.disconnect = this.disconnect.bind(this, channelContext);
+    channelContext[IOPA.PUBSUB.Subscribe] = this.subscribe.bind(this, channelContext);
+    channelContext[IOPA.CancelToken].onCancelled(this._disconnect.bind(this, channelContext));
+    
     return next();
-};
+
+}
 
 /**
  * @method subscribe
@@ -113,7 +99,7 @@ CoAPClientSubscriber.prototype.subscribe = function CoAPClientSubscriber_subscri
     session[SESSION.Subscriptions][topic] = [callback];
 
   var defaults = {};
-  defaults[IOPA.Method] = "GET";
+  defaults[IOPA.Method] = IOPA.METHODS.GET;
   defaults[IOPA.Headers] = { "Observe":  new Buffer('0')};
 
   return channelContext.observe(topic, defaults, function (childContext) {
@@ -129,9 +115,7 @@ CoAPClientSubscriber.prototype.subscribe = function CoAPClientSubscriber_subscri
  * @this CoAPClientSubscriber IOPA context dictionary
  * @param channelContext IOPA context
  */
-CoAPClientSubscriber.prototype.disconnect = function CoAPClientSubscriber_disconnect(channelContext) {
-      channelContext[SERVER.RawStream].end();
-   
+CoAPClientSubscriber.prototype._disconnect = function CoAPClientSubscriber_disconnect(channelContext) {
       var session = channelContext[SERVER.Capabilities][THISMIDDLEWARE.CAPABILITY][SESSION.Session];
       var client =  session[SESSION.ClientId]; 
       
