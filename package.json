@@ -10,7 +10,7 @@
       "email": "build@iopa.io"
     }
   ],
-  "version": "1.2.4",
+  "version": "1.2.5",
   "repository": {
     "type": "git",
     "url": "https://github.com/iopa-io/iopa-coap.git"
@@ -20,7 +20,7 @@
     "iopa-coap-packet": "^1.2.0",
     "iopa-common-middleware": "^1.2.0",
     "iopa-common-stream": "^1.2.0"
-    },
+  },
   "keywords": [
     "iot",
     "iotivity",
