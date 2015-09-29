@@ -29,13 +29,13 @@ const iopaMessageLogger = require('iopa-logger').MessageLogger
 
 describe('#CoAP Server()', function() {
   
-  var server, coapClient;
+  var server, clientSocket, coapClient;
   var events = new EventEmitter();
 
   before(function (done) {
 
     var app = new iopa.App();
-
+    app.use(udp);
     app.use(iopaMessageLogger);
     app.use(coap);
 
@@ -58,12 +58,15 @@ describe('#CoAP Server()', function() {
 
    });
                                  
-    server = udp.createServer(app.build());
-  
+    server = app.createServer("udp:");
+    clientSocket = app.createServer("udp:");
+    
     if (!process.env.PORT)
       process.env.PORT = iopa.constants.IOPA.PORTS.COAP;
 
     server.listen(process.env.PORT, process.env.IP).then(function () {
+      return clientSocket.listen()})
+      .then(function(){
       done();
       setTimeout(function () { events.emit("SERVER-UDP"); }, 50);
     });
@@ -77,7 +80,7 @@ describe('#CoAP Server()', function() {
     
          
    it('should connect via UDP', function (done) {
-     server.connect("coap://127.0.0.1")
+     clientSocket.connect("coap://127.0.0.1")
        .then(function (cl) {
          coapClient = cl;
          coapClient["server.RemotePort"].should.equal(5683);
@@ -118,7 +121,9 @@ describe('#CoAP Server()', function() {
     
    it('should close', function(done) {
        server.close().then(function(){
-         console.log("[TEST] CoAP Closed");
+         return clientSocket.close()})
+         .then(function(){
+                console.log("[TEST] CoAP Closed");
          done();});
     });
     

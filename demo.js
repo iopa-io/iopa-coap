@@ -24,6 +24,7 @@ const iopa = require('iopa')
 const iopaMessageLogger = require('iopa-logger').MessageLogger
 
 var app = new iopa.App();
+app.use(udp);
 app.use(iopaMessageLogger);
 app.use(coap);
 
@@ -39,7 +40,9 @@ app.use(function (context, next) {
   return next();
 });
 
-var server = udp.createServer(app.build());
+var server = app.createServer("udp:");
+var clientSocket = app.createServer("udp:");
+
 server[IOPA.PUBSUB.Publish] = app[IOPA.PUBSUB.Publish];
 
 if (!process.env.PORT)
@@ -48,10 +51,13 @@ if (!process.env.PORT)
 server.listen(process.env.PORT, process.env.IP)
   .then(function () {
     app.log.info("[DEMO] Server is on port " + server.port);
-    return server.connect("coap://127.0.0.1", "CLIENTID-1", false);
+    return clientSocket.listen();
+  })
+  .then(function(){
+    return clientSocket.connect("coap://127.0.0.1", "CLIENTID-1", false);
   })
   .then(function (coapClient) {
-    app.log.info("[DEMO] Client is on port " + coapClient["server.LocalPort"]);
+    coapClient.log.info("[DEMO] Client is on port " + coapClient["server.LocalPort"]);
     coapClient[IOPA.PUBSUB.Subscribe]('/projector', function (pubsub) {
       pubsub.log.info("[DEMO] CoAP /projector RESPONSE " + pubsub["iopa.Body"].toString());
     });
@@ -59,7 +65,9 @@ server.listen(process.env.PORT, process.env.IP)
       server[IOPA.PUBSUB.Publish]("/projector", new Buffer("Hello World 2"));
     }, 1000);
     setTimeout(function () {
-      server.close().then(function () { app.log.info("[DEMO] CoAP DEMO Closed"); })
+      server.close()
+      .then(function () {return clientSocket.close();})
+      .then(function(){ app.log.info("[DEMO] CoAP DEMO Closed"); })
     }, 5000);
   });
     
