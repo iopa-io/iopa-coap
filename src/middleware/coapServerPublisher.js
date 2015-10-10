@@ -99,7 +99,7 @@ CoapServerPublisher.prototype.invoke = function CoapServerPublisher_invoke(conte
         subscription[SERVER.RemoteAddress] = context.response[SERVER.RemoteAddress];
         subscription[SERVER.RemotePort] = context.response[SERVER.RemotePort];
         subscription[IOPA.Headers] = context.response[IOPA.Headers];
-        subscription[IOPA.Body] = context.response[IOPA.Body];
+        subscription.observation = context[SERVER.Capabilities][COAPMIDDLEWARE.CAPABILITY].observation;
         subscription[SESSION.ObservationSeq] = 1;
         subscription[SERVER.CancelTokenSource] = context[SERVER.CancelTokenSource];
       
@@ -171,8 +171,7 @@ function CoapServerPublisher_publishCoAP(topic, payload) {
             if (clientId in db_Clients) {
                 client = db_Clients[clientId];
                 var subscription = client[SESSION.Subscriptions][topic];
-                subscription[IOPA.Headers]["Observe"] = new Buffer((subscription[SESSION.ObservationSeq]++).toString(), 'utf8');
-                subscription[IOPA.Body].write(payload);
+                 subscription.observation(payload, new Buffer((subscription[SESSION.ObservationSeq]++).toString(), 'utf8'));
             }
             else {
                 // missing client, ignore

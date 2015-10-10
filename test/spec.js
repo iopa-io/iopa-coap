@@ -89,10 +89,10 @@ describe('#CoAP Server()', function() {
    });
 
    it('should GET via CoAP', function (done) {
-     coapClient.send("/projector", "GET")
+     coapClient.create("/projector", "GET").send()
        .then(function (response) {
          response.log.info("[TEST] CoAP /projector RESPONSE " + response["iopa.Body"].toString());
-         response["iopa.Method"].should.equal('2.05');
+         response["iopa.StatusCode"].should.equal('2.05');
          response["iopa.Body"].toString().should.equal('Hello World');
          done();
        });
@@ -107,7 +107,7 @@ describe('#CoAP Server()', function() {
    it('should SUBSCRIBE via CoAP', function (done) {
      coapClient["pubsub.Subscribe"]("/projector", function (response) {
        response.log.info("[TEST] CoAP /projector RESPONSE " + response["iopa.Body"].toString());
-       response["iopa.Method"].should.equal('2.05');
+       response["iopa.StatusCode"].should.equal('2.05');
        response["iopa.Body"].toString().should.equal('Hello World2');
        done();
      });

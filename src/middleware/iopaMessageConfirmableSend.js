@@ -25,8 +25,8 @@ const QOS = require('../common/constants.js').QOS
  const THISMIDDLEWARE = {CAPABILITY: "urn:io.iopa:confirmablesend",
   RETRYSENDER: "confirmablesend.RetrySender",
   RESPONSELISTENER: "confirmablesend.ResponseListener"},
-     packageVersion = require('../../package.json').version,
-     COAPMIDDLEWARE = require('../common/constants.js').COAPMIDDLEWARE
+  packageVersion = require('../../package.json').version,
+  COAPMIDDLEWARE = require('../common/constants.js').COAPMIDDLEWARE
  
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -48,8 +48,7 @@ function IopaMessageConfirmableSend(app) {
  * @param next   IOPA application delegate for the remainder of the pipeline
  */
 IopaMessageConfirmableSend.prototype.invoke = function IopaMessageConfirmableSend_invoke(context, next) { 
-    
-   context.response[SERVER.RawStream] = new iopaStream.OutgoingStreamTransform(this._write.bind(this, context.response, context.response[SERVER.RawStream])); 
+  context.response[SERVER.RawStream] = new iopaStream.OutgoingStreamTransform(this._write.bind(this, context.response, context.response[SERVER.RawStream])); 
    return next();
 };
 
@@ -58,8 +57,7 @@ IopaMessageConfirmableSend.prototype.invoke = function IopaMessageConfirmableSen
  * @this context IOPA context dictionary
  * @param next   IOPA application delegate for the remainder of the pipeline
  */
-IopaMessageConfirmableSend.prototype.dispatch = function IopaMessageConfirmableSend_dispatch(context, next) { 
-    
+IopaMessageConfirmableSend.prototype.dispatch = function IopaMessageConfirmableSend_dispatch(context, next) {   
    context[SERVER.RawStream] = new iopaStream.OutgoingStreamTransform(this._write.bind(this, context, context[SERVER.RawStream]));  
    return next();
 };

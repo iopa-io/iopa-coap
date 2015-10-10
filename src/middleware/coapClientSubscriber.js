@@ -102,11 +102,13 @@ CoAPClientSubscriber.prototype.subscribe = function CoAPClientSubscriber_subscri
   defaults[IOPA.Method] = IOPA.METHODS.GET;
   defaults[IOPA.Headers] = { "Observe":  new Buffer('0')};
 
-  return channelContext.observe(topic, defaults, function (childContext) {
-    if (childContext[COAP.Code] === "2.05" && childContext[IOPA.Headers]["Observe"] > 0) {
-      callback(childContext);
-    }
-  });
+  return channelContext
+    .create(topic, defaults)
+    .observe(function (childContext) {
+      if (childContext[COAP.Code] === "2.05" && childContext[IOPA.Headers]["Observe"] > 0) {
+        callback(childContext);
+      }
+    });
 };
 
 

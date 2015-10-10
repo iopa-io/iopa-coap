@@ -25,8 +25,8 @@ const iopaMessageLogger = require('iopa-logger').MessageLogger
 
 var app = new iopa.App();
 app.use(udp);
-app.use(iopaMessageLogger);
 app.use(coap);
+app.use(iopaMessageLogger);
 
 app.use(function (context, next) {
   context.log.info("[DEMO] CoAP APP USE " + context["iopa.Method"] + " " + context["iopa.Path"]);
